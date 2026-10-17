@@ -1,0 +1,9 @@
+[botdetection]
+ip_limit = 0
+link_token = false
+
+[botdetection.ip_limit_user]
+link_token = false
+
+[botdetection.ip_limit_tor]
+link_token = false

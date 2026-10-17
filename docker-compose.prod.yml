@@ -1,0 +1,75 @@
+# ==============================================================================
+# TalentScout - Production Docker Compose Deployment Configuration
+# Hardened container environment with resource limits, healthchecks & isolated networks.
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  talentscout-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: talentscout_prod_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Persistent database volume (isolated from host filesystem)
+      - talentscout_data:/app/data
+      - talentscout_uploads:/app/uploads
+    networks:
+      - talentscout_net
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # Optional local SearXNG Sourcing engine
+  searxng:
+    image: searxng/searxng:latest
+    container_name: talentscout_prod_searxng
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng:ro
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080/
+    networks:
+      - talentscout_net
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+volumes:
+  talentscout_data:
+    driver: local
+  talentscout_uploads:
+    driver: local
+
+networks:
+  talentscout_net:
+    driver: bridge

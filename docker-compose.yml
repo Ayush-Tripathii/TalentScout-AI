@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: talentscout-searxng
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_SECRET=talentscout_searxng_secret_key_change_in_production
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: talentscout-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # FastAPI Backend
+      - "8501:8501"  # Streamlit Frontend
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./static:/app/static
+    environment:
+      - SEARXNG_URL=http://searxng:8080
+      - DATABASE_URL=sqlite:////app/data/talentscout.db
+    depends_on:
+      - searxng

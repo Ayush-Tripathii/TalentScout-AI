@@ -1,0 +1,21 @@
+{
+  "Bengaluru": ["Bengaluru", "Bangalore", "BLR"],
+  "Delhi NCR": ["Delhi", "NCR", "New Delhi", "Gurugram", "Gurgaon", "Noida", "Greater Noida", "Faridabad", "Ghaziabad"],
+  "Gurugram": ["Gurugram", "Gurgaon", "Delhi NCR", "NCR"],
+  "Noida": ["Noida", "Greater Noida", "Delhi NCR", "NCR"],
+  "Mumbai": ["Mumbai", "Bombay", "Navi Mumbai", "Thane", "MMR"],
+  "Pune": ["Pune", "Poona", "PCMC", "Hinjawadi", "Maharashtra"],
+  "Hyderabad": ["Hyderabad", "Secunderabad", "Cyberabad", "Telangana"],
+  "Chennai": ["Chennai", "Madras", "Tamil Nadu"],
+  "Kolkata": ["Kolkata", "Calcutta", "West Bengal"],
+  "Indore": ["Indore", "Madhya Pradesh", "MP"],
+  "Bhopal": ["Bhopal", "Madhya Pradesh", "MP"],
+  "Ahmedabad": ["Ahmedabad", "Amdavad", "Gandhinagar", "Gujarat"],
+  "Jaipur": ["Jaipur", "Pink City", "Rajasthan"],
+  "Chandigarh": ["Chandigarh", "Mohali", "Panchkula", "Tricity"],
+  "Kochi": ["Kochi", "Cochin", "Ernakulam", "Kerala"],
+  "Coimbatore": ["Coimbatore", "Kovai", "Tamil Nadu"],
+  "Bhubaneswar": ["Bhubaneswar", "Cuttack", "Odisha"],
+  "Nagpur": ["Nagpur", "Vidarbha", "Maharashtra"],
+  "Lucknow": ["Lucknow", "Uttar Pradesh", "UP"]
+}

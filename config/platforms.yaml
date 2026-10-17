@@ -1,0 +1,99 @@
+platforms:
+  linkedin:
+    name: "LinkedIn"
+    site_pattern: "site:linkedin.com/in"
+    url_regex: "^https?:\\/\\/([a-z]{2,3}\\.)?linkedin\\.com\\/in\\/[a-zA-Z0-9_-]+"
+    category: "professional"
+    title_delimiter: " - "
+    title_format: "{name} - {headline} - {company_or_location} | LinkedIn"
+    active: true
+
+  naukri:
+    name: "Naukri"
+    site_pattern: "site:naukri.com"
+    url_regex: "^https?:\\/\\/([a-z0-9]+\\.)?naukri\\.com\\/(recruiters|profile|resume-database)"
+    category: "job_board"
+    title_delimiter: " - "
+    title_format: "{title} | Naukri.com"
+    active: true
+
+  foundit:
+    name: "Foundit (Monster)"
+    site_pattern: "site:foundit.in"
+    url_regex: "^https?:\\/\\/([a-z0-9]+\\.)?foundit\\.in"
+    category: "job_board"
+    title_delimiter: " - "
+    title_format: "{title} | foundit India"
+    active: true
+
+  shine:
+    name: "Shine"
+    site_pattern: "site:shine.com"
+    url_regex: "^https?:\\/\\/([a-z0-9]+\\.)?shine\\.com"
+    category: "job_board"
+    title_delimiter: " - "
+    title_format: "{title} | Shine.com"
+    active: true
+
+  indeed:
+    name: "Indeed"
+    site_pattern: "site:indeed.com/r"
+    url_regex: "^https?:\\/\\/([a-z]{2,3}\\.)?indeed\\.com\\/r\\/[a-zA-Z0-9_-]+"
+    category: "resume_db"
+    title_delimiter: " - "
+    title_format: "{name} - {title} - {location} | Indeed.com"
+    active: true
+
+  apna:
+    name: "Apna"
+    site_pattern: "site:apna.co"
+    url_regex: "^https?:\\/\\/([a-z0-9]+\\.)?apna\\.co"
+    category: "job_board"
+    title_delimiter: " - "
+    title_format: "{title} | Apna"
+    active: true
+
+  github:
+    name: "GitHub"
+    site_pattern: "site:github.com"
+    url_regex: "^https?:\\/\\/github\\.com\\/[a-zA-Z0-9_-]+$"
+    category: "code"
+    title_delimiter: " - "
+    title_format: "{username} ({name}) · GitHub"
+    active: true
+
+  stackoverflow:
+    name: "Stack Overflow"
+    site_pattern: "site:stackoverflow.com/users"
+    url_regex: "^https?:\\/\\/stackoverflow\\.com\\/users\\/[0-9]+\\/[a-zA-Z0-9_-]+"
+    category: "community"
+    title_delimiter: " - "
+    title_format: "User {name} - Stack Overflow"
+    active: true
+
+  kaggle:
+    name: "Kaggle"
+    site_pattern: "site:kaggle.com"
+    url_regex: "^https?:\\/\\/www\\.kaggle\\.com\\/[a-zA-Z0-9_-]+$"
+    category: "data"
+    title_delimiter: " | "
+    title_format: "{name} | Kaggle"
+    active: true
+
+  behance:
+    name: "Behance"
+    site_pattern: "site:behance.net"
+    url_regex: "^https?:\\/\\/www\\.behance\\.net\\/[a-zA-Z0-9_-]+$"
+    category: "design"
+    title_delimiter: " on "
+    title_format: "{name} on Behance"
+    active: true
+
+  dribbble:
+    name: "Dribbble"
+    site_pattern: "site:dribbble.com"
+    url_regex: "^https?:\\/\\/dribbble\\.com\\/[a-zA-Z0-9_-]+$"
+    category: "design"
+    title_delimiter: " on "
+    title_format: "{name} on Dribbble"
+    active: true
