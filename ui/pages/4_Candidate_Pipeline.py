@@ -4,7 +4,15 @@ import sys
 from pathlib import Path
 
 # Ensure project root is first in sys.path
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+current_path = Path(__file__).resolve()
+ROOT_DIR = None
+for p in [current_path] + list(current_path.parents):
+    if (p / "app").is_dir() and (p / "ui").is_dir():
+        ROOT_DIR = p
+        break
+if ROOT_DIR is None:
+    ROOT_DIR = current_path.parent.parent.parent
+
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
@@ -29,7 +37,7 @@ from ui.components.header import render_workflow_header
 st.set_page_config(page_title="Candidate Pipeline & Ranking | TalentScout", page_icon="📊", layout="wide")
 
 # Custom CSS
-css_file = Path(__file__).resolve().parent.parent / "styles" / "custom.css"
+css_file = ROOT_DIR / "ui" / "styles" / "custom.css"
 if css_file.exists():
     with open(css_file, "r", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -347,9 +355,12 @@ else:
                     if resumes:
                         st.markdown("##### 📄 Ingested Resume Details")
                         for r in resumes:
-                            st.caption(f"Filename: `{r.filename}` | Uploaded: {r.parsed_at.strftime('%Y-%m-%d %H:%M')}")
-                            if r.raw_text:
-                                st.text_area("Parsed Resume Text", value=r.raw_text[:800] + ("..." if len(r.raw_text) > 800 else ""), height=150, key=f"txt_res_{cand.id}", disabled=True)
+                            fn = getattr(r, "filename", "Resume Document")
+                            dt_str = r.parsed_at.strftime('%Y-%m-%d %H:%M') if getattr(r, "parsed_at", None) else "N/A"
+                            st.caption(f"Filename: `{fn}` | Uploaded: {dt_str}")
+                            raw_txt = getattr(r, "raw_text", getattr(r, "parsed_raw_text", ""))
+                            if raw_txt:
+                                st.text_area("Parsed Resume Text", value=raw_txt[:800] + ("..." if len(raw_txt) > 800 else ""), height=150, key=f"txt_res_{cand.id}", disabled=True)
 
                     st.divider()
                     st.markdown("##### 📝 Recruiter Notes")

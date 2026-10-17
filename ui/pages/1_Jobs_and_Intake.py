@@ -4,7 +4,15 @@ import sys
 from pathlib import Path
 
 # Ensure project root is first in sys.path
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+current_path = Path(__file__).resolve()
+ROOT_DIR = None
+for p in [current_path] + list(current_path.parents):
+    if (p / "app").is_dir() and (p / "ui").is_dir():
+        ROOT_DIR = p
+        break
+if ROOT_DIR is None:
+    ROOT_DIR = current_path.parent.parent.parent
+
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
@@ -19,7 +27,7 @@ from ui.components.header import render_workflow_header
 st.set_page_config(page_title="Job Intake | TalentScout", page_icon="📝", layout="wide")
 
 # Custom CSS
-css_file = Path(__file__).resolve().parent.parent / "styles" / "custom.css"
+css_file = ROOT_DIR / "ui" / "styles" / "custom.css"
 if css_file.exists():
     with open(css_file, "r", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)

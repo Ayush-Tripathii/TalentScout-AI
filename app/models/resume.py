@@ -27,3 +27,16 @@ class Resume(SQLModel, table=True):
 
     # Relationships
     candidate: Optional["Candidate"] = Relationship(back_populates="resumes")
+
+    @property
+    def raw_text(self) -> Optional[str]:
+        return self.parsed_raw_text
+
+    @property
+    def filename(self) -> str:
+        from pathlib import Path
+        return Path(self.file_path).name if self.file_path else "resume.pdf"
+
+    @property
+    def parsed_at(self) -> datetime:
+        return self.created_at
