@@ -32,11 +32,12 @@ import {
   Server,
   Zap,
   Globe,
-  Radio
+  Radio,
+  LogOut
 } from 'lucide-react';
 import { api } from '../api';
 
-export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToast }) {
+export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogout, showToast }) {
   const [activeTab, setActiveTab] = useState('overview'); // overview | users | apikeys | cms | audits
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingCms, setIsSavingCms] = useState(false);
@@ -45,6 +46,7 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
   // Search & Filter state for Users
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [showAllKeys, setShowAllKeys] = useState(true); // Default to TRUE so user keys & secrets are clearly visible
   const [revealedKeys, setRevealedKeys] = useState({});
   const [copiedKeyId, setCopiedKeyId] = useState(null);
 
@@ -364,7 +366,7 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button 
             className="btn btn-secondary btn-sm"
             onClick={loadAllAdminData}
@@ -396,6 +398,31 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
               <span>Recruiter Workspace</span>
             </button>
           )}
+
+          <button 
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              if (onLogout) {
+                onLogout();
+              } else if (onBackToLanding) {
+                onBackToLanding();
+              }
+            }}
+            title="Sign out of Administrator Session"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              color: '#fca5a5',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <LogOut size={14} style={{ color: '#ef4444' }} />
+            <span>Logout</span>
+          </button>
         </div>
       </header>
 
@@ -669,19 +696,40 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
                 />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>Role:</span>
-                <select 
-                  className="text-input" 
-                  value={userRoleFilter} 
-                  onChange={(e) => setUserRoleFilter(e.target.value)}
-                  style={{ padding: '6px 12px', fontSize: '12px' }}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAllKeys(!showAllKeys)}
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: showAllKeys ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    border: showAllKeys ? '1px solid rgba(251, 191, 36, 0.4)' : '1px solid var(--border-subtle)',
+                    color: showAllKeys ? '#fbbf24' : 'var(--text-muted)',
+                    fontWeight: 700,
+                  }}
+                  title="Toggle unmasked visibility for all user API keys and secrets"
                 >
-                  <option value="all">All Roles ({allUsers.length})</option>
-                  <option value="admin">Administrators</option>
-                  <option value="recruiter">Recruiters</option>
-                  <option value="manager">Managers</option>
-                </select>
+                  {showAllKeys ? <Eye size={13} /> : <EyeOff size={13} />}
+                  <span>{showAllKeys ? 'Key Visibility: Plaintext (Visible)' : 'Key Visibility: Masked'}</span>
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>Role:</span>
+                  <select 
+                    className="text-input" 
+                    value={userRoleFilter} 
+                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                    style={{ padding: '6px 12px', fontSize: '12px', width: 'auto' }}
+                  >
+                    <option value="all">All Roles ({allUsers.length})</option>
+                    <option value="admin">Administrators</option>
+                    <option value="recruiter">Recruiters</option>
+                    <option value="manager">Managers</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -695,7 +743,7 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
                       <th style={{ padding: '14px 18px' }}>Contact Information</th>
                       <th style={{ padding: '14px 18px' }}>Agency / Organization</th>
                       <th style={{ padding: '14px 18px' }}>Personal TalentScout API Key</th>
-                      <th style={{ padding: '14px 18px' }}>Connected API Services</th>
+                      <th style={{ padding: '14px 18px' }}>Connected Third-Party Secret Keys</th>
                       <th style={{ padding: '14px 18px' }}>Status</th>
                       <th style={{ padding: '14px 18px', textAlign: 'right' }}>Actions</th>
                     </tr>
@@ -789,30 +837,30 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
                             </div>
                           </td>
 
-                          {/* Personal TalentScout API Key */}
+                          {/* Personal TalentScout API Key (Clearly visible) */}
                           <td style={{ padding: '14px 18px' }}>
                             <div style={{
-                              background: 'rgba(0, 0, 0, 0.4)',
-                              border: '1px solid var(--border-subtle)',
+                              background: 'rgba(0, 0, 0, 0.45)',
+                              border: '1px solid rgba(251, 191, 36, 0.25)',
                               borderRadius: '8px',
                               padding: '6px 10px',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '8px',
-                              maxWidth: '260px'
+                              maxWidth: '340px'
                             }}>
                               <Key size={13} style={{ color: '#fbbf24', flexShrink: 0 }} />
-                              <code style={{ fontSize: '11px', color: '#fbbf24', fontFamily: 'monospace' }}>
-                                {isRevealed 
+                              <code style={{ fontSize: '11.5px', color: '#fbbf24', fontFamily: 'monospace', fontWeight: 600 }}>
+                                {showAllKeys || isRevealed 
                                   ? (u.user_api_key || 'ts_live_key_not_set')
                                   : (u.user_api_key ? `${u.user_api_key.substring(0, 10)}••••••••` : 'None')}
                               </code>
                               <button 
                                 onClick={() => toggleKeyReveal(u.id)}
-                                title={isRevealed ? "Hide Key" : "Reveal Full Key"}
+                                title={isRevealed || showAllKeys ? "Toggle Key Mask" : "Reveal Full Key"}
                                 style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
                               >
-                                {isRevealed ? <EyeOff size={13} /> : <Eye size={13} />}
+                                {isRevealed || showAllKeys ? <EyeOff size={13} /> : <Eye size={13} />}
                               </button>
                               <button 
                                 onClick={() => handleCopyText(u.user_api_key, `key_${u.id}`)}
@@ -832,56 +880,122 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
                             </div>
                           </td>
 
-                          {/* Connected API Services */}
+                          {/* Connected Third-Party Secret Keys (Clearly visible) */}
                           <td style={{ padding: '14px 18px' }}>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '180px' }}>
-                              <span style={{
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                background: hasSerpApi ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                color: hasSerpApi ? '#34d399' : 'var(--text-dim)',
-                                border: hasSerpApi ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent'
-                              }}>
-                                SerpApi: {hasSerpApi ? 'Active' : 'Off'}
-                              </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', minWidth: '220px' }}>
+                              {hasSerpApi && (
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '6px',
+                                  background: 'rgba(16, 185, 129, 0.08)',
+                                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#34d399' }}>SerpApi:</span>
+                                    <code style={{ fontSize: '11px', color: '#a7f3d0', fontFamily: 'monospace' }}>
+                                      {showAllKeys ? apiKeysObj.serpapi : `${apiKeysObj.serpapi.substring(0, 8)}...`}
+                                    </code>
+                                  </div>
+                                  <button
+                                    onClick={() => handleCopyText(apiKeysObj.serpapi, `serp_${u.id}`)}
+                                    title="Copy SerpApi Key"
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '1px' }}
+                                  >
+                                    {copiedKeyId === `serp_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                                  </button>
+                                </div>
+                              )}
 
-                              <span style={{
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                background: hasHunter ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                color: hasHunter ? '#a5b4fc' : 'var(--text-dim)',
-                                border: hasHunter ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent'
-                              }}>
-                                Hunter: {hasHunter ? 'Active' : 'Off'}
-                              </span>
+                              {hasHunter && (
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '6px',
+                                  background: 'rgba(99, 102, 241, 0.08)',
+                                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#818cf8' }}>Hunter:</span>
+                                    <code style={{ fontSize: '11px', color: '#c7d2fe', fontFamily: 'monospace' }}>
+                                      {showAllKeys ? apiKeysObj.hunter : `${apiKeysObj.hunter.substring(0, 8)}...`}
+                                    </code>
+                                  </div>
+                                  <button
+                                    onClick={() => handleCopyText(apiKeysObj.hunter, `hunt_${u.id}`)}
+                                    title="Copy Hunter.io Key"
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '1px' }}
+                                  >
+                                    {copiedKeyId === `hunt_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                                  </button>
+                                </div>
+                              )}
 
-                              <span style={{
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                background: hasApollo ? 'rgba(236, 72, 153, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                color: hasApollo ? '#f472b6' : 'var(--text-dim)',
-                                border: hasApollo ? '1px solid rgba(236, 72, 153, 0.3)' : '1px solid transparent'
-                              }}>
-                                Apollo: {hasApollo ? 'Active' : 'Off'}
-                              </span>
+                              {hasApollo && (
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '6px',
+                                  background: 'rgba(236, 72, 153, 0.08)',
+                                  border: '1px solid rgba(236, 72, 153, 0.3)',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#f472b6' }}>Apollo:</span>
+                                    <code style={{ fontSize: '11px', color: '#fbcfe8', fontFamily: 'monospace' }}>
+                                      {showAllKeys ? apiKeysObj.apollo : `${apiKeysObj.apollo.substring(0, 8)}...`}
+                                    </code>
+                                  </div>
+                                  <button
+                                    onClick={() => handleCopyText(apiKeysObj.apollo, `apol_${u.id}`)}
+                                    title="Copy Apollo Key"
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '1px' }}
+                                  >
+                                    {copiedKeyId === `apol_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                                  </button>
+                                </div>
+                              )}
 
-                              <span style={{
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                background: hasWebhook ? 'rgba(251, 191, 36, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                color: hasWebhook ? '#fbbf24' : 'var(--text-dim)',
-                                border: hasWebhook ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid transparent'
-                              }}>
-                                Webhook: {hasWebhook ? 'Sync' : 'Off'}
-                              </span>
+                              {hasWebhook && (
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '6px',
+                                  background: 'rgba(245, 158, 11, 0.08)',
+                                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#fbbf24' }}>Webhook:</span>
+                                    <code style={{ fontSize: '10.5px', color: '#fde68a', fontFamily: 'monospace', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={apiKeysObj.webhook || apiKeysObj.slack_webhook || apiKeysObj.discord_webhook}>
+                                      {apiKeysObj.webhook || apiKeysObj.slack_webhook || apiKeysObj.discord_webhook}
+                                    </code>
+                                  </div>
+                                  <button
+                                    onClick={() => handleCopyText(apiKeysObj.webhook || apiKeysObj.slack_webhook || apiKeysObj.discord_webhook, `hook_${u.id}`)}
+                                    title="Copy Webhook URL"
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '1px' }}
+                                  >
+                                    {copiedKeyId === `hook_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                                  </button>
+                                </div>
+                              )}
+
+                              {!hasSerpApi && !hasHunter && !hasApollo && !hasWebhook && (
+                                <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                                  No external keys configured
+                                </span>
+                              )}
                             </div>
                           </td>
 
@@ -1029,6 +1143,149 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
               </div>
 
             </div>
+
+            {/* Comprehensive Secret Keys Vault for All Platform Users */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden', marginTop: '10px' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.02)' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Key size={16} style={{ color: '#fbbf24' }} />
+                    Live Platform Secret Keys & Recruiter Credentials Directory
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    Cross-tenant visibility of all provisioned TalentScout API keys, third-party search credentials, and webhook endpoints.
+                  </p>
+                </div>
+                <span className="badge badge-accent" style={{ fontWeight: 700 }}>
+                  {allUsers.length} Credentials Monitored
+                </span>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255, 255, 255, 0.03)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '12px 16px' }}>User & Organization</th>
+                      <th style={{ padding: '12px 16px' }}>Personal TalentScout API Key</th>
+                      <th style={{ padding: '12px 16px' }}>SerpApi (Google X-Ray)</th>
+                      <th style={{ padding: '12px 16px' }}>Hunter.io Secret</th>
+                      <th style={{ padding: '12px 16px' }}>Apollo.io Secret</th>
+                      <th style={{ padding: '12px 16px' }}>Alert Webhook Endpoint</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allUsers.map((u) => {
+                      const apiKeysObj = u.api_keys || {};
+                      return (
+                        <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ fontWeight: 700, color: '#fff' }}>{u.full_name}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{u.email}</div>
+                            <div style={{ fontSize: '10.5px', color: '#818cf8', marginTop: '2px' }}>{u.company || 'Enterprise Agency'}</div>
+                          </td>
+
+                          {/* Personal TalentScout Key */}
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 0, 0, 0.45)', border: '1px solid rgba(251, 191, 36, 0.3)', padding: '3px 8px', borderRadius: '6px' }}>
+                              <code style={{ fontSize: '11px', color: '#fbbf24', fontFamily: 'monospace', fontWeight: 600 }}>
+                                {u.user_api_key || 'ts_live_key_not_set'}
+                              </code>
+                              <button
+                                onClick={() => handleCopyText(u.user_api_key, `hub_key_${u.id}`)}
+                                title="Copy Key"
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '1px' }}
+                              >
+                                {copiedKeyId === `hub_key_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* SerpApi Secret */}
+                          <td style={{ padding: '12px 16px' }}>
+                            {apiKeysObj.serpapi ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '3px 8px', borderRadius: '6px' }}>
+                                <code style={{ fontSize: '11px', color: '#a7f3d0', fontFamily: 'monospace' }}>
+                                  {apiKeysObj.serpapi}
+                                </code>
+                                <button
+                                  onClick={() => handleCopyText(apiKeysObj.serpapi, `hub_serp_${u.id}`)}
+                                  title="Copy SerpApi Key"
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '1px' }}
+                                >
+                                  {copiedKeyId === `hub_serp_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '11px' }}>Not Configured</span>
+                            )}
+                          </td>
+
+                          {/* Hunter Secret */}
+                          <td style={{ padding: '12px 16px' }}>
+                            {apiKeysObj.hunter ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '3px 8px', borderRadius: '6px' }}>
+                                <code style={{ fontSize: '11px', color: '#c7d2fe', fontFamily: 'monospace' }}>
+                                  {apiKeysObj.hunter}
+                                </code>
+                                <button
+                                  onClick={() => handleCopyText(apiKeysObj.hunter, `hub_hunt_${u.id}`)}
+                                  title="Copy Hunter Key"
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '1px' }}
+                                >
+                                  {copiedKeyId === `hub_hunt_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '11px' }}>Not Configured</span>
+                            )}
+                          </td>
+
+                          {/* Apollo Secret */}
+                          <td style={{ padding: '12px 16px' }}>
+                            {apiKeysObj.apollo ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.3)', padding: '3px 8px', borderRadius: '6px' }}>
+                                <code style={{ fontSize: '11px', color: '#fbcfe8', fontFamily: 'monospace' }}>
+                                  {apiKeysObj.apollo}
+                                </code>
+                                <button
+                                  onClick={() => handleCopyText(apiKeysObj.apollo, `hub_apol_${u.id}`)}
+                                  title="Copy Apollo Key"
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '1px' }}
+                                >
+                                  {copiedKeyId === `hub_apol_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '11px' }}>Not Configured</span>
+                            )}
+                          </td>
+
+                          {/* Webhook Endpoint */}
+                          <td style={{ padding: '12px 16px' }}>
+                            {apiKeysObj.webhook || apiKeysObj.slack_webhook || apiKeysObj.discord_webhook ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '3px 8px', borderRadius: '6px' }}>
+                                <code style={{ fontSize: '11px', color: '#fde68a', fontFamily: 'monospace', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={apiKeysObj.webhook || apiKeysObj.slack_webhook || apiKeysObj.discord_webhook}>
+                                  {apiKeysObj.webhook || apiKeysObj.slack_webhook || apiKeysObj.discord_webhook}
+                                </code>
+                                <button
+                                  onClick={() => handleCopyText(apiKeysObj.webhook || apiKeysObj.slack_webhook || apiKeysObj.discord_webhook, `hub_hook_${u.id}`)}
+                                  title="Copy Webhook URL"
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '1px' }}
+                                >
+                                  {copiedKeyId === `hub_hook_${u.id}` ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '11px' }}>Not Configured</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1037,9 +1294,11 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
         {/* ======================================================== */}
         {activeTab === 'cms' && (
           <form onSubmit={handleSaveCms} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            {/* Header & Publish Button */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
               <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#fff' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#fff', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Edit3 size={20} style={{ color: '#818cf8' }} />
                   Landing Page Content Management
                 </h2>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -1050,101 +1309,211 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, showToa
               <button 
                 type="submit" 
                 disabled={isSavingCms}
-                className="btn btn-primary"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', fontWeight: 700 }}
+                className="btn btn-primary landing-btn-shine"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 28px',
+                  fontWeight: 800,
+                  fontSize: '13.5px',
+                  borderRadius: '10px',
+                  boxShadow: '0 4px 20px rgba(99, 102, 241, 0.45)',
+                }}
               >
-                <Save size={16} />
+                <Save size={17} className={isSavingCms ? 'animate-spin' : ''} />
                 <span>{isSavingCms ? 'Saving Changes...' : 'Save & Publish to Landing Page'}</span>
               </button>
             </div>
 
-            <div className="card" style={{ padding: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-                Top Announcement Pill Badge
-              </label>
-              <input
-                type="text"
-                className="text-input"
-                style={{ width: '100%', fontSize: '13px' }}
-                value={cmsContent.announcement_badge}
-                onChange={(e) => setCmsContent(prev => ({ ...prev, announcement_badge: e.target.value }))}
-                placeholder="e.g. 🚀 Phase 8 Autopilot Sourcing Live: Automated 24/7 background crawls active"
-              />
+            {/* Card 1: Top Announcement Pill */}
+            <div className="card" style={{ padding: '24px', border: '1px solid rgba(99, 102, 241, 0.25)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={18} style={{ color: '#fbbf24' }} />
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#fff' }}>
+                    Top Announcement Pill Badge
+                  </h3>
+                </div>
+                <span className="badge badge-accent" style={{ fontSize: '11px' }}>
+                  Live Floating Pill
+                </span>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <input
+                  type="text"
+                  className="text-input"
+                  style={{
+                    width: '100%',
+                    fontSize: '13.5px',
+                    background: 'rgba(13, 19, 33, 0.85)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#f8fafc',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                  }}
+                  value={cmsContent.announcement_badge}
+                  onChange={(e) => setCmsContent(prev => ({ ...prev, announcement_badge: e.target.value }))}
+                  placeholder="e.g. 🚀 Phase 8 Autopilot Sourcing Live: Automated 24/7 background crawls active"
+                />
+              </div>
+
+              {/* Live Preview Pill */}
+              <div style={{
+                padding: '12px 16px',
+                background: 'rgba(0, 0, 0, 0.35)',
+                borderRadius: '8px',
+                border: '1px dashed rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 700 }}>Live Preview:</span>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '11.5px',
+                  color: '#c7d2fe',
+                  fontWeight: 600
+                }}>
+                  {cmsContent.announcement_badge || 'No announcement badge currently configured'}
+                </div>
+              </div>
             </div>
 
-            <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#818cf8' }}>
-                Hero Section
-              </h3>
+            {/* Card 2: Hero Section */}
+            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', border: '1px solid rgba(99, 102, 241, 0.25)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={18} style={{ color: '#818cf8' }} />
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#fff' }}>
+                  Hero Section (Landing Page Above-The-Fold)
+                </h3>
+              </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#e2e8f0', marginBottom: '8px' }}>
                   Main Hero Headline
                 </label>
                 <input
                   type="text"
                   className="text-input"
-                  style={{ width: '100%', fontSize: '14px', fontWeight: 600 }}
+                  style={{
+                    width: '100%',
+                    fontSize: '14.5px',
+                    fontWeight: 600,
+                    background: 'rgba(13, 19, 33, 0.85)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#f8fafc',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                  }}
                   value={cmsContent.hero_headline}
                   onChange={(e) => setCmsContent(prev => ({ ...prev, hero_headline: e.target.value }))}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#e2e8f0', marginBottom: '8px' }}>
                   Hero Subheadline
                 </label>
                 <textarea
                   className="text-input"
                   rows={3}
-                  style={{ width: '100%', fontSize: '13px', lineHeight: 1.5 }}
+                  style={{
+                    width: '100%',
+                    fontSize: '13.5px',
+                    lineHeight: 1.6,
+                    background: 'rgba(13, 19, 33, 0.85)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#f8fafc',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                  }}
                   value={cmsContent.hero_subheadline}
                   onChange={(e) => setCmsContent(prev => ({ ...prev, hero_subheadline: e.target.value }))}
                 />
               </div>
             </div>
 
-            <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#818cf8' }}>
-                About Us Section
-              </h3>
+            {/* Card 3: About Us & Origin Story */}
+            <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', border: '1px solid rgba(99, 102, 241, 0.25)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Building2 size={18} style={{ color: '#ec4899' }} />
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#fff' }}>
+                  About Us & Origin Story Narrative
+                </h3>
+              </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#e2e8f0', marginBottom: '8px' }}>
                   About Headline
                 </label>
                 <input
                   type="text"
                   className="text-input"
-                  style={{ width: '100%', fontSize: '14px', fontWeight: 600 }}
+                  style={{
+                    width: '100%',
+                    fontSize: '14.5px',
+                    fontWeight: 600,
+                    background: 'rgba(13, 19, 33, 0.85)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#f8fafc',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                  }}
                   value={cmsContent.about_headline}
                   onChange={(e) => setCmsContent(prev => ({ ...prev, about_headline: e.target.value }))}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#e2e8f0', marginBottom: '8px' }}>
                   Origin Story Narrative
                 </label>
                 <textarea
                   className="text-input"
                   rows={4}
-                  style={{ width: '100%', fontSize: '13px', lineHeight: 1.5 }}
+                  style={{
+                    width: '100%',
+                    fontSize: '13.5px',
+                    lineHeight: 1.6,
+                    background: 'rgba(13, 19, 33, 0.85)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#f8fafc',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                  }}
                   value={cmsContent.about_story}
                   onChange={(e) => setCmsContent(prev => ({ ...prev, about_story: e.target.value }))}
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {/* Bottom Floating Save Button */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '10px' }}>
               <button 
                 type="submit" 
                 disabled={isSavingCms}
-                className="btn btn-primary"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', fontWeight: 700 }}
+                className="btn btn-primary landing-btn-shine"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '14px 32px',
+                  fontWeight: 800,
+                  fontSize: '14px',
+                  borderRadius: '10px',
+                  boxShadow: '0 6px 24px rgba(99, 102, 241, 0.5)',
+                }}
               >
                 <Save size={18} />
-                <span>{isSavingCms ? 'Saving...' : 'Save All Landing Page Edits'}</span>
+                <span>{isSavingCms ? 'Saving Edits...' : 'Save All Landing Page Edits'}</span>
               </button>
             </div>
           </form>

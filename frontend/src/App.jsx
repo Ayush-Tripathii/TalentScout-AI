@@ -150,6 +150,7 @@ export default function App() {
             setIsAdminMode(false);
             handleLogout();
           }}
+          onLogout={handleLogout}
           showToast={showToast}
         />
         <Toast toast={toast} onClose={() => setToast(null)} />
