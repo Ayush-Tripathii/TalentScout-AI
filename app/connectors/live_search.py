@@ -10,7 +10,13 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 import httpx
-from ddgs import DDGS
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    try:
+        from ddgs import DDGS
+    except ImportError:
+        DDGS = None
 from sqlmodel import Session, select
 from app.db import engine
 from app.models.app_setting import AppSetting
@@ -44,7 +50,7 @@ class LiveSearchProvider(SearchProvider):
     """Hybrid Live Search Engine combining SerpApi, GitHub API, and free DuckDuckGo."""
 
     def __init__(self):
-        self.ddgs = DDGS()
+        self.ddgs = DDGS() if DDGS is not None else None
 
     def get_provider_status(self) -> Dict[str, Any]:
         """Return status of all search engines (free default + optional keys)."""
@@ -162,7 +168,7 @@ class LiveSearchProvider(SearchProvider):
             queries_to_try.append(query)
 
         for q_attempt in queries_to_try:
-            if not q_attempt.strip():
+            if not q_attempt.strip() or not self.ddgs:
                 continue
             try:
                 raw_items = list(self.ddgs.text(q_attempt.strip(), max_results=limit * 2))
