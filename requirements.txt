@@ -6,6 +6,7 @@ python-multipart>=0.0.9
 
 # Database & Migrations
 sqlmodel>=0.0.16
+sqlalchemy-libsql>=0.1.0
 alembic>=1.13.1
 sqlite3-api; python_version < "3.0"
 

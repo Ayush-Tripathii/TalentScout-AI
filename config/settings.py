@@ -43,6 +43,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = f"sqlite:///{BASE_DIR / 'data' / 'talentscout.db'}"
+    TURSO_AUTH_TOKEN: Optional[str] = None
 
     # Search & Caching
     SEARCH_PROVIDER: str = "searxng"

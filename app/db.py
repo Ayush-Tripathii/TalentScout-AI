@@ -33,28 +33,58 @@ from app.models import (
 
 settings = get_settings()
 
-# Ensure the data directory exists
-db_path = settings.DATABASE_URL.replace("sqlite:///", "")
-if db_path.startswith("./"):
-    db_path = str(Path(__file__).resolve().parent.parent / db_path[2:])
-db_dir = Path(db_path).parent
-db_dir.mkdir(parents=True, exist_ok=True)
-
-# Create engine with check_same_thread=False for SQLite multi-threaded access
-engine = create_engine(
-    f"sqlite:///{db_path}",
-    echo=False,
-    connect_args={"check_same_thread": False},
+db_url_str = str(settings.DATABASE_URL).strip()
+is_turso = (
+    db_url_str.startswith("libsql://")
+    or "turso.io" in db_url_str
+    or db_url_str.startswith("sqlite+libsql://")
 )
+
+if is_turso:
+    # Turso Cloud LibSQL database
+    if db_url_str.startswith("libsql://"):
+        engine_url = f"sqlite+{db_url_str}?secure=true"
+    else:
+        engine_url = db_url_str
+
+    auth_token = settings.TURSO_AUTH_TOKEN or os.getenv("TURSO_AUTH_TOKEN", "")
+    connect_args = {}
+    if auth_token:
+        connect_args["auth_token"] = auth_token
+
+    engine = create_engine(
+        engine_url,
+        echo=False,
+        connect_args=connect_args,
+    )
+else:
+    # Local SQLite
+    db_path = settings.DATABASE_URL.replace("sqlite:///", "")
+    if db_path.startswith("./"):
+        db_path = str(Path(__file__).resolve().parent.parent / db_path[2:])
+    db_dir = Path(db_path).parent
+    db_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create engine with check_same_thread=False for SQLite multi-threaded access
+    engine = create_engine(
+        f"sqlite:///{db_path}",
+        echo=False,
+        connect_args={"check_same_thread": False},
+    )
 
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     """Enable SQLite foreign key support and WAL mode for high concurrency."""
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.close()
+    if is_turso:
+        return
+    try:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.close()
+    except Exception:
+        pass
 
 
 def init_db():
