@@ -356,6 +356,29 @@ export default function Topbar({
             paddingLeft: '10px',
             borderLeft: '1px solid rgba(255, 255, 255, 0.1)'
           }}>
+            {/* Private Workspace Indicator for Regular Recruiters */}
+            {currentUser.role !== 'admin' && (
+              <div 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                }}
+                title="Your private recruiter workspace. Data and candidates are isolated to your account."
+              >
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+                <span>Private Workspace</span>
+              </div>
+            )}
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <img 
                 src={currentUser.avatar} 
@@ -367,7 +390,7 @@ export default function Topbar({
                   {currentUser.name}
                 </span>
                 <span style={{ fontSize: '10px', color: 'var(--text-muted)', lineHeight: '1.2' }}>
-                  {currentUser.company || 'Recruiter'}
+                  {currentUser.company || (currentUser.role === 'admin' ? 'Security Admin' : 'Recruiter')}
                 </span>
               </div>
             </div>

@@ -357,7 +357,7 @@ async def verify_otp_endpoint(request: VerifyOtpRequest):
                 phone=clean_phone or "+91 Not Provided",
                 designation="Technical Recruiter",
                 company=(request.company or "Enterprise Staffing").strip(),
-                role=request.role or "Recruiter",
+                role="recruiter",
                 password_hash=SecurityService.hash_password(request.password or "Recruiter#2026!Secure"),
                 user_api_key=f"ts_live_{secrets.token_hex(16)}",
                 api_keys_json="{}",
@@ -374,6 +374,8 @@ async def verify_otp_endpoint(request: VerifyOtpRequest):
                 user_record.phone = clean_phone
             if request.company and user_record.company == "Staffing Agency":
                 user_record.company = request.company
+            if user_record.email != "admin@talentscout.ai" and user_record.role == "admin":
+                user_record.role = "recruiter"
             session.add(user_record)
             session.commit()
 
@@ -425,12 +427,12 @@ async def login(request: LoginRequest):
             if clean_email == "priya.sharma@apexstaffing.in" or "demo" in clean_email:
                 name = "Priya Sharma"
                 company = "Apex Staffing Solutions"
-                role = "Lead Staffing Partner"
+                role = "recruiter"
                 phone = request.phone or "+91 98201 54321"
             else:
                 name = clean_email.split("@")[0].replace(".", " ").title()
                 company = "Enterprise Staffing"
-                role = "Recruiter"
+                role = "recruiter"
                 phone = request.phone or "+91 Not Provided"
 
             user_record = User(
@@ -454,6 +456,8 @@ async def login(request: LoginRequest):
             user_record.last_login_at = datetime.now(timezone.utc)
             if request.phone and (not user_record.phone or user_record.phone == "+91 Not Provided"):
                 user_record.phone = request.phone
+            if user_record.email != "admin@talentscout.ai" and user_record.role == "admin":
+                user_record.role = "recruiter"
             session.add(user_record)
             session.commit()
 
@@ -517,7 +521,7 @@ async def register(request: RegisterRequest):
                 phone=clean_phone,
                 designation="Technical Recruiter",
                 company=clean_agency,
-                role=request.role or "Recruiter",
+                role="recruiter",
                 password_hash=SecurityService.hash_password(request.password or "Recruiter#2026!Pass"),
                 user_api_key=f"ts_live_{secrets.token_hex(16)}",
                 api_keys_json="{}",
@@ -532,6 +536,8 @@ async def register(request: RegisterRequest):
             user_record.last_login_at = datetime.now(timezone.utc)
             if clean_phone != "+91 Not Provided":
                 user_record.phone = clean_phone
+            if user_record.email != "admin@talentscout.ai" and user_record.role == "admin":
+                user_record.role = "recruiter"
             session.add(user_record)
             session.commit()
 

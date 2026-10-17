@@ -135,15 +135,6 @@ export default function LandingPage({ onOpenAuth, onLoginSuccess, onOpenAdmin })
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button 
             className="btn btn-secondary btn-sm"
-            onClick={() => onOpenAuth ? onOpenAuth('admin') : (onOpenAdmin && onOpenAdmin())}
-            style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', borderColor: 'rgba(99, 102, 241, 0.4)' }}
-            title="Administrator & CMS Portal"
-          >
-            <ShieldCheck size={14} style={{ color: '#818cf8' }} />
-            <span>Admin CMS</span>
-          </button>
-          <button 
-            className="btn btn-secondary btn-sm"
             onClick={() => onOpenAuth('login')}
             style={{ fontWeight: 700 }}
           >
