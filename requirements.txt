@@ -16,6 +16,9 @@ python-dotenv>=1.0.1
 pyyaml>=6.0.1
 httpx>=0.27.0
 requests>=2.31.0
+pyjwt>=2.8.0
+duckduckgo_search>=5.0.0
+reportlab>=4.1.0
 watchdog>=4.0.0
 
 # Contact & Text Parsing
