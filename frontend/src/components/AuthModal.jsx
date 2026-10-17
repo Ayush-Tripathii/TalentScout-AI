@@ -16,7 +16,9 @@ import {
   RefreshCw,
   Check,
   ChevronLeft,
-  ShieldAlert
+  ShieldAlert,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { api, getCsrfToken } from '../api';
 
@@ -39,6 +41,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
   const [password, setPassword] = useState('');
   const [company, setCompany] = useState('');
   const [role, setRole] = useState('Senior Technical Recruiter');
+  const [showPassword, setShowPassword] = useState(false);
   
   // OTP States
   const [otpCode, setOtpCode] = useState('');
@@ -466,32 +469,52 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
               <div 
                 onClick={fillAdminCredentials}
                 style={{
-                  background: 'rgba(139, 92, 246, 0.12)',
-                  border: '1px dashed rgba(139, 92, 246, 0.4)',
-                  borderRadius: '10px',
-                  padding: '9px 12px',
+                  background: 'rgba(139, 92, 246, 0.1)',
+                  border: '1px solid rgba(139, 92, 246, 0.35)',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   cursor: 'pointer',
                   marginBottom: '16px',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: '0 4px 14px rgba(139, 92, 246, 0.15)',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.12)'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.18)';
+                  e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.6)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.35)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <KeyRound size={16} style={{ color: '#a78bfa' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(139, 92, 246, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#c4b5fd',
+                  }}>
+                    <KeyRound size={17} />
+                  </div>
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>
+                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>
                       Auto-fill Root Admin Credentials
                     </div>
-                    <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                       admin@talentscout.ai • PBKDF2 Salted Auth
                     </div>
                   </div>
                 </div>
-                <span className="badge badge-accent" style={{ fontSize: '10px', padding: '2px 8px', background: 'rgba(139, 92, 246, 0.3)', color: '#c4b5fd' }}>
+                <span className="badge badge-accent" style={{ fontSize: '10.5px', padding: '3px 10px', background: 'rgba(139, 92, 246, 0.3)', color: '#c4b5fd', fontWeight: 700 }}>
                   Auto-Fill
                 </span>
               </div>
@@ -499,45 +522,65 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
               <div 
                 onClick={handleDemoRecruiterLogin}
                 style={{
-                  background: 'rgba(99, 102, 241, 0.12)',
-                  border: '1px dashed rgba(99, 102, 241, 0.4)',
-                  borderRadius: '10px',
-                  padding: '9px 12px',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(236, 72, 153, 0.08) 100%)',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   cursor: 'pointer',
                   marginBottom: '16px',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.15)',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.12)'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(236, 72, 153, 0.15) 100%)';
+                  e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.6)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(236, 72, 153, 0.08) 100%)';
+                  e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.35)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Zap size={16} style={{ color: '#fbbf24' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(251, 191, 36, 0.18)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fbbf24',
+                  }}>
+                    <Zap size={17} />
+                  </div>
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>
+                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>
                       Instant Recruiter Demo Access
                     </div>
-                    <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                       1-click instant login with sample recruiter profile
                     </div>
                   </div>
                 </div>
-                <span className="badge badge-accent" style={{ fontSize: '10px', padding: '2px 8px' }}>
+                <span className="badge badge-accent" style={{ fontSize: '10.5px', padding: '3px 10px', fontWeight: 700 }}>
                   1-Click Enter
                 </span>
               </div>
             )}
 
-            <form onSubmit={handleInitiateAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handleInitiateAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {mode === 'signup' && (
-                <div>
-                  <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>
-                    Full Name
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">
+                    <span>Full Name</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <User size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--text-dim)' }} />
+                  <div className="input-with-icon">
+                    <User size={16} className="input-lead-icon" />
                     <input
                       type="text"
                       required
@@ -545,19 +588,18 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className="text-input"
-                      style={{ width: '100%', paddingLeft: '36px', fontSize: '13px' }}
                     />
                   </div>
                 </div>
               )}
 
               {/* Email with disposable blocking */}
-              <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>
-                  {mode === 'admin' ? 'Administrator Email' : 'Work Email Address'}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">
+                  <span>{mode === 'admin' ? 'Administrator Email' : 'Work Email Address'}</span>
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <Mail size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--text-dim)' }} />
+                <div className="input-with-icon">
+                  <Mail size={16} className="input-lead-icon" />
                   <input
                     type="email"
                     required
@@ -566,9 +608,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
                     onChange={(e) => handleEmailChange(e.target.value)}
                     className="text-input"
                     style={{ 
-                      width: '100%', 
-                      paddingLeft: '36px', 
-                      fontSize: '13px',
                       borderColor: emailWarning ? '#ef4444' : undefined 
                     }}
                   />
@@ -583,12 +622,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
 
               {/* Phone Number with dummy/fake blocking (Signup mode) */}
               {mode === 'signup' && (
-                <div>
-                  <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>
-                    Mobile Number (+91)
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">
+                    <span>Mobile Number (+91)</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Phone size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--text-dim)' }} />
+                  <div className="input-with-icon">
+                    <Phone size={16} className="input-lead-icon" />
                     <input
                       type="tel"
                       required
@@ -597,9 +636,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
                       onChange={(e) => handlePhoneChange(e.target.value)}
                       className="text-input"
                       style={{ 
-                        width: '100%', 
-                        paddingLeft: '36px', 
-                        fontSize: '13px',
                         borderColor: phoneWarning ? '#ef4444' : undefined 
                       }}
                     />
@@ -614,38 +650,46 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
               )}
 
               {/* Password */}
-              <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>
-                  {mode === 'admin' ? 'Admin Master Password' : 'Password'}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">
+                  <span>{mode === 'admin' ? 'Admin Master Password' : 'Password'}</span>
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--text-dim)' }} />
+                <div className="input-with-icon">
+                  <Lock size={16} className="input-lead-icon" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="text-input"
-                    style={{ width: '100%', paddingLeft: '36px', fontSize: '13px' }}
+                    style={{ paddingRight: '42px' }}
                   />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
 
               {mode === 'signup' && (
-                <div>
-                  <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>
-                    Agency / Organization Name
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">
+                    <span>Agency / Organization Name</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Building2 size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--text-dim)' }} />
+                  <div className="input-with-icon">
+                    <Building2 size={16} className="input-lead-icon" />
                     <input
                       type="text"
                       placeholder="e.g. Apex Staffing Solutions"
                       value={company}
                       onChange={(e) => setCompany(e.target.value)}
                       className="text-input"
-                      style={{ width: '100%', paddingLeft: '36px', fontSize: '13px' }}
                     />
                   </div>
                 </div>
@@ -657,16 +701,20 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
                 className="btn btn-primary landing-btn-shine"
                 style={{
                   width: '100%',
-                  padding: '11px',
+                  padding: '12px',
                   fontSize: '13.5px',
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  marginTop: '6px',
+                  marginTop: '8px',
                   background: mode === 'admin' ? 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)' : undefined,
+                  boxShadow: mode === 'admin' 
+                    ? '0 4px 18px rgba(124, 58, 237, 0.45)' 
+                    : '0 4px 18px rgba(99, 102, 241, 0.45)',
                   opacity: (emailWarning || phoneWarning) ? 0.6 : 1,
+                  borderRadius: '10px'
                 }}
               >
                 {isLoading ? (

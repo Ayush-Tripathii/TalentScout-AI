@@ -320,28 +320,234 @@ code, pre {
   border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
-/* Input Fields */
-.input-text, .select-input, textarea.input-text {
+/* ============================================================== */
+/* COMPREHENSIVE MODERN FORM CONTROLS & INPUT SYSTEM              */
+/* ============================================================== */
+
+/* Universal form inputs (text, email, password, tel, number, url, search, date, select, textarea) */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="url"],
+input[type="search"],
+input[type="date"],
+.text-input,
+.input-text,
+.form-input,
+.form-control,
+textarea.input-text,
+textarea.text-input,
+textarea {
   width: 100%;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  background: rgba(13, 19, 33, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   padding: 10px 14px;
-  color: var(--text-main);
+  color: #f8fafc;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  outline: none;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="tel"]::placeholder,
+input[type="number"]::placeholder,
+input[type="url"]::placeholder,
+input[type="search"]::placeholder,
+.text-input::placeholder,
+.input-text::placeholder,
+.form-input::placeholder,
+textarea::placeholder {
+  color: #64748b;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+/* Hover & Focus Effects */
+input[type="text"]:hover,
+input[type="email"]:hover,
+input[type="password"]:hover,
+input[type="tel"]:hover,
+input[type="number"]:hover,
+input[type="url"]:hover,
+input[type="search"]:hover,
+.text-input:hover,
+.input-text:hover,
+.form-input:hover,
+textarea:hover,
+select:hover,
+.select-input:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(18, 26, 44, 0.88);
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="url"]:focus,
+input[type="search"]:focus,
+.text-input:focus,
+.input-text:focus,
+.form-input:focus,
+textarea:focus,
+select:focus,
+.select-input:focus {
+  border-color: #818cf8 !important;
+  background: rgba(15, 23, 42, 0.96) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28), 0 2px 12px rgba(0, 0, 0, 0.5) !important;
+  outline: none;
+}
+
+/* Disabled & Readonly */
+input:disabled,
+.text-input:disabled,
+.input-text:disabled,
+textarea:disabled,
+select:disabled {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Select Dropdown Styling */
+select,
+.select-input {
+  width: 100%;
+  background-color: rgba(13, 19, 33, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 36px 10px 14px;
+  color: #f8fafc;
   font-family: var(--font-sans);
   font-size: 13px;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.input-text:focus, .select-input:focus, textarea.input-text:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+  padding: 8px;
 }
 
-.input-text::placeholder {
-  color: var(--text-dim);
+/* Custom Checkbox & Radio */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform 0.15s ease;
 }
+
+input[type="checkbox"]:hover,
+input[type="radio"]:hover {
+  transform: scale(1.08);
+}
+
+/* Range input slider */
+input[type="range"] {
+  accent-color: var(--accent-primary);
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+/* Form Groups & Labels */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.form-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.015em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Input with icon wrapper */
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-with-icon .input-lead-icon,
+.input-with-icon > svg:first-child {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+  z-index: 2;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.input-with-icon:focus-within .input-lead-icon,
+.input-with-icon:focus-within > svg:first-child {
+  color: #818cf8;
+}
+
+.input-with-icon input,
+.input-with-icon .text-input,
+.input-with-icon .input-text {
+  padding-left: 38px !important;
+}
+
+/* Password Eye Toggle Button */
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  z-index: 3;
+}
+
+.password-toggle-btn:hover {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 
 /* Score Pill */
 .score-badge {
