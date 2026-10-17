@@ -160,8 +160,8 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
     e.preventDefault();
     setThreatWarning('');
 
-    // Pre-flight threat detection
-    const inputsToCheck = [fullName, email, phone, password, company];
+    // Pre-flight threat detection (do not scan passwords, passwords legitimately contain #, $, etc.)
+    const inputsToCheck = [fullName, email, phone, company];
     for (const input of inputsToCheck) {
       if (checkThreatPattern(input)) {
         setThreatWarning('Security Alert: Malicious SQL injection or script attack signature identified. Request terminated.');
@@ -356,9 +356,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
   };
 
   return (
-    <div className="modal-backdrop" style={{ zIndex: 9999 }}>
+    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 9999 }}>
       <div 
         className="modal-content"
+        onClick={(e) => e.stopPropagation()}
         style={{ 
           maxWidth: '480px', 
           width: '92%', 

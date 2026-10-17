@@ -163,6 +163,9 @@ class ThreatDetector:
 
         elif isinstance(value, dict):
             for k, v in value.items():
+                # Passwords and authentication tokens legitimately contain special characters (#, $, -, etc.)
+                if k.lower() in ("password", "master_password", "new_password", "admin_pass", "current_password", "token", "access_token"):
+                    continue
                 is_threat, reason = ThreatDetector.scan_for_sqli(v)
                 if is_threat:
                     return True, f"Field '{k}': {reason}"
