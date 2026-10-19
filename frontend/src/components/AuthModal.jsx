@@ -267,13 +267,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
         password: password || 'Recruiter#2026!Secure',
       });
 
-      localStorage.removeItem('talentscout_admin_token');
       const user = {
         name: res.user?.name || fullName || email.split('@')[0],
         email: res.user?.email || email,
-        phone: res.user?.phone || phone || '+91 Not Provided',
-        company: res.user?.company || company || 'Independent Recruiter',
-        role: 'recruiter',
+        phone: res.user?.phone || phone || '+91 98201 54321',
+        company: res.user?.company || company || 'Apex Staffing Solutions',
+        role: res.user?.role || role || 'Lead Staffing Partner',
         avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fullName || email)}&backgroundColor=6366f1,8b5cf6`,
         token: res.access_token || 'ts_jwt_' + Math.random().toString(36).substring(2),
         loggedInAt: new Date().toISOString(),
@@ -281,7 +280,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
 
       localStorage.setItem('talentscout_auth_user', JSON.stringify(user));
       setIsLoading(false);
-      if (showToast) showToast(`Identity verified successfully. Welcome to your private recruiter workspace, ${user.name}!`, 'success');
+      if (showToast) showToast(`Identity verified successfully. Welcome, ${user.name}!`, 'success');
       onLoginSuccess(user, 'workspace');
       onClose();
     } catch (err) {
@@ -321,12 +320,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: demoEmail }),
       });
-      localStorage.removeItem('talentscout_admin_token');
+      const data = await res.json();
       const demoUser = {
         name: data.user?.name || 'Priya Sharma',
         email: demoEmail,
         company: data.user?.company || 'Apex Staffing Solutions',
-        role: 'recruiter',
+        role: data.user?.role || 'Lead Staffing Partner',
         avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
         token: data.access_token || 'ts_demo_token_apex_2026',
         loggedInAt: new Date().toISOString(),
@@ -337,12 +336,11 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
       onLoginSuccess(demoUser, 'workspace');
       onClose();
     } catch {
-      localStorage.removeItem('talentscout_admin_token');
       const demoUser = {
         name: 'Priya Sharma',
         email: 'priya.sharma@apexstaffing.in',
         company: 'Apex Staffing Solutions',
-        role: 'recruiter',
+        role: 'Lead Staffing Partner',
         avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
         token: 'ts_demo_token_apex_2026',
         loggedInAt: new Date().toISOString(),
@@ -483,6 +481,16 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
                   transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                   boxShadow: '0 4px 14px rgba(139, 92, 246, 0.15)',
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.18)';
+                  e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.6)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.35)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{
@@ -509,41 +517,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
                 <span className="badge badge-accent" style={{ fontSize: '10.5px', padding: '3px 10px', background: 'rgba(139, 92, 246, 0.3)', color: '#c4b5fd', fontWeight: 700 }}>
                   Auto-Fill
                 </span>
-              </div>
-            ) : mode === 'signup' ? (
-              <div 
-                style={{
-                  background: 'rgba(16, 185, 129, 0.08)',
-                  border: '1px solid rgba(16, 185, 129, 0.25)',
-                  borderRadius: '12px',
-                  padding: '10px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '16px',
-                }}
-              >
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  background: 'rgba(16, 185, 129, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#34d399',
-                  flexShrink: 0
-                }}>
-                  <ShieldCheck size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>
-                    Dedicated Recruiter Space
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.7)' }}>
-                    Your new account gets an isolated workspace. Other recruiters cannot view your requirements or candidates.
-                  </div>
-                </div>
               </div>
             ) : (
               <div 
@@ -942,6 +915,22 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
                   style={{ background: 'transparent', border: 'none', color: '#818cf8', fontWeight: 700, cursor: 'pointer' }}
                 >
                   Sign in
+                </button>
+              </div>
+            )}
+
+            {mode !== 'admin' && (
+              <div style={{ paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('admin');
+                    fillAdminCredentials();
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', fontSize: '11px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <ShieldCheck size={12} style={{ color: '#818cf8' }} />
+                  <span>Switch to Administrator & CMS Portal</span>
                 </button>
               </div>
             )}

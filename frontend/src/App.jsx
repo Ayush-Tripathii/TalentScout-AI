@@ -44,11 +44,10 @@ export default function App() {
 
   const handleLoginSuccess = (user, target = 'workspace') => {
     setCurrentUser(user);
-    if (user?.role === 'admin' && (target === 'admin' || target === 'workspace')) {
-      setIsAdminMode(target === 'admin');
+    if (target === 'admin' || user?.role === 'admin') {
+      setIsAdminMode(true);
     } else {
       setIsAdminMode(false);
-      localStorage.removeItem('talentscout_admin_token');
     }
     loadInitialData();
   };
@@ -141,8 +140,8 @@ export default function App() {
     ? (jobs.find(j => j.id === selectedJobId) || jobs[0]) 
     : null;
 
-  // Administrator & CMS Portal View (Strictly gated to verified admin role)
-  if (isAdminMode && currentUser?.role === 'admin') {
+  // Administrator & CMS Portal View
+  if (isAdminMode) {
     return (
       <>
         <AdminPanel 
@@ -193,7 +192,6 @@ export default function App() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         stats={stats} 
-        currentUser={currentUser}
       />
 
       {/* Main Right Workspace */}
@@ -211,7 +209,7 @@ export default function App() {
           onSelectCandidate={handleOpenCandidateDrawer}
           currentUser={currentUser}
           onLogout={handleLogout}
-          onOpenAdmin={currentUser?.role === 'admin' ? () => setIsAdminMode(true) : null}
+          onOpenAdmin={() => setIsAdminMode(true)}
         />
 
         {/* View Switcher */}

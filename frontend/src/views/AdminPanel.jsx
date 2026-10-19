@@ -92,13 +92,6 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogou
   }, []);
 
   const loadAllAdminData = async () => {
-    const token = localStorage.getItem('talentscout_admin_token') || adminToken;
-    if (!token) {
-      if (showToast) showToast('Access Denied: Administrator authentication required.', 'error');
-      if (onBackToWorkspace) onBackToWorkspace();
-      return;
-    }
-
     setIsLoading(true);
     try {
       const [cmsRes, overviewRes] = await Promise.all([
@@ -106,13 +99,8 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogou
           console.error('Failed to load CMS content:', err);
           return null;
         }),
-        api.getAdminOverview(token).catch(err => {
+        api.getAdminOverview(adminToken).catch(err => {
           console.error('Failed to load admin overview:', err);
-          if (err?.message?.includes('403') || err?.message?.includes('401') || err?.message?.includes('Forbidden')) {
-            localStorage.removeItem('talentscout_admin_token');
-            if (showToast) showToast('Administrator privileges required. Access revoked.', 'error');
-            if (onBackToWorkspace) onBackToWorkspace();
-          }
           return null;
         }),
       ]);

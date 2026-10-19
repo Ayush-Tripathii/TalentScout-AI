@@ -13,9 +13,7 @@ import {
   Megaphone
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, stats, currentUser }) {
-  const isUserAdmin = currentUser?.role === 'admin';
-
+export default function Sidebar({ activeTab, setActiveTab, stats }) {
   const navItems = [
     { id: 'dashboard', label: 'Requirements & Stats', icon: LayoutDashboard },
     { id: 'sourcing', label: 'Sourcing Console', icon: Search, badge: 'Live DDG' },
@@ -25,7 +23,7 @@ export default function Sidebar({ activeTab, setActiveTab, stats, currentUser })
     { id: 'outreach', label: 'Outreach & Marketing', icon: Megaphone, badge: 'Phase 6' },
     { id: 'resumes', label: 'Resume Parser', icon: FileText },
     { id: 'dedup', label: 'Identity Deduplication', icon: GitMerge },
-    ...(isUserAdmin ? [{ id: 'compliance', label: 'Compliance & Audit', icon: ShieldCheck, badge: 'Admin' }] : []),
+    { id: 'compliance', label: 'Compliance & Audit', icon: ShieldCheck, badge: 'Phase 7' },
   ];
 
   return (
