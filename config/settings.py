@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: Optional[str] = None
     HUNTER_API_KEY: Optional[str] = None
     APOLLO_API_KEY: Optional[str] = None
+    SERPAPI_API_KEY: Optional[str] = None
+    BRAVE_API_KEY: Optional[str] = None
+    DDG_PROXY: Optional[str] = None
 
     # Gmail IMAP
     GMAIL_IMAP_SERVER: str = "imap.gmail.com"

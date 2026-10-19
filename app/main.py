@@ -1386,13 +1386,15 @@ async def reveal_candidate_contact(request: EnrichmentRevealRequest):
 # -------------------------------------------------------------
 class SaveKeysRequest(BaseModel):
     serpapi_key: Optional[str] = None
+    brave_api_key: Optional[str] = None
     github_token: Optional[str] = None
     hunter_api_key: Optional[str] = None
     apollo_api_key: Optional[str] = None
+    ddg_proxy: Optional[str] = None
 
 
 class TestKeyRequest(BaseModel):
-    provider: str  # "serpapi", "github", "hunter", "apollo"
+    provider: str  # "serpapi", "brave", "github", "hunter", "apollo", "proxy"
     key: str
 
 
@@ -1428,6 +1430,18 @@ async def save_sourcing_keys(request: SaveKeysRequest):
                 s_rec.value = s_val
                 s_rec.updated_at = datetime.now(timezone.utc)
                 session.add(s_rec)
+
+        # Brave Search API
+        if request.brave_api_key is not None:
+            b_val = request.brave_api_key.strip()
+            b_rec = session.get(AppSetting, "brave_api_key")
+            if not b_rec:
+                b_rec = AppSetting(key="brave_api_key", value=b_val, description="Brave Search API Subscription Token")
+                session.add(b_rec)
+            else:
+                b_rec.value = b_val
+                b_rec.updated_at = datetime.now(timezone.utc)
+                session.add(b_rec)
 
         # GitHub
         if request.github_token is not None:
@@ -1465,6 +1479,18 @@ async def save_sourcing_keys(request: SaveKeysRequest):
                 a_rec.updated_at = datetime.now(timezone.utc)
                 session.add(a_rec)
 
+        # Free / Custom Proxy for Anti-IP Block
+        if request.ddg_proxy is not None:
+            p_val = request.ddg_proxy.strip()
+            p_rec = session.get(AppSetting, "ddg_proxy")
+            if not p_rec:
+                p_rec = AppSetting(key="ddg_proxy", value=p_val, description="Free / Custom Proxy for Anti-IP Block")
+                session.add(p_rec)
+            else:
+                p_rec.value = p_val
+                p_rec.updated_at = datetime.now(timezone.utc)
+                session.add(p_rec)
+
         session.commit()
 
     provider = LiveSearchProvider()
@@ -1482,7 +1508,7 @@ async def save_sourcing_keys(request: SaveKeysRequest):
 
 @app.post("/api/settings/keys/test", tags=["Settings"])
 async def test_sourcing_key(request: TestKeyRequest):
-    """Test validity of a SerpApi, GitHub, Hunter, or Apollo key with threat & format inspection."""
+    """Test validity of a SerpApi, Brave, GitHub, Hunter, Apollo, or Proxy key with threat & format inspection."""
     # 1. Threat SQLi / script injection check
     is_sqli, sqli_reason = ThreatDetector.scan_for_sqli(request.key)
     if is_sqli:
@@ -1496,8 +1522,14 @@ async def test_sourcing_key(request: TestKeyRequest):
     if request.provider == "serpapi":
         valid, msg = LiveSearchProvider.test_serpapi_key(request.key.strip())
         return {"status": "success" if valid else "error", "valid": valid, "message": msg}
+    elif request.provider == "brave":
+        valid, msg = LiveSearchProvider.test_brave_api_key(request.key.strip())
+        return {"status": "success" if valid else "error", "valid": valid, "message": msg}
     elif request.provider == "github":
         valid, msg = LiveSearchProvider.test_github_token(request.key.strip())
+        return {"status": "success" if valid else "error", "valid": valid, "message": msg}
+    elif request.provider == "proxy":
+        valid, msg = LiveSearchProvider.test_proxy_connection(request.key.strip())
         return {"status": "success" if valid else "error", "valid": valid, "message": msg}
     elif request.provider in ["hunter", "apollo"]:
         return {"status": "success", "valid": True, "message": f"{request.provider.title()} API key format verified!"}

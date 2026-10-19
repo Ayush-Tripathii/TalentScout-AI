@@ -6,6 +6,8 @@ import {
   AlertCircle, 
   ExternalLink, 
   ShieldCheck, 
+  Shield,
+  Globe,
   Sparkles, 
   Cpu, 
   Code2, 
@@ -26,25 +28,34 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
     free_engine_active: true,
     has_serpapi: false,
     serpapi_masked: null,
+    has_brave: false,
+    brave_masked: null,
     has_github: false,
     github_masked: null,
     has_hunter: false,
     hunter_masked: null,
     has_apollo: false,
     apollo_masked: null,
+    has_proxy: false,
+    proxy_masked: null,
     enrichment_credits_remaining: 50,
     active_mode: 'free_tier'
   });
 
   // Input states
   const [serpapiKey, setSerpapiKey] = useState('');
+  const [braveKey, setBraveKey] = useState('');
   const [githubToken, setGithubToken] = useState('');
   const [hunterKey, setHunterKey] = useState('');
   const [apolloKey, setApolloKey] = useState('');
+  const [ddgProxy, setDdgProxy] = useState('');
 
   // Key testing states
   const [testingSerpapi, setTestingSerpapi] = useState(false);
   const [serpapiResult, setSerpapiResult] = useState(null);
+
+  const [testingBrave, setTestingBrave] = useState(false);
+  const [braveResult, setBraveResult] = useState(null);
 
   const [testingGithub, setTestingGithub] = useState(false);
   const [githubResult, setGithubResult] = useState(null);
@@ -54,6 +65,9 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
 
   const [testingApollo, setTestingApollo] = useState(false);
   const [apolloResult, setApolloResult] = useState(null);
+
+  const [testingProxy, setTestingProxy] = useState(false);
+  const [proxyResult, setProxyResult] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -97,6 +111,30 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
       showToast('SerpApi test error: ' + err.message, 'error');
     } finally {
       setTestingSerpapi(false);
+    }
+  };
+
+  const handleTestBrave = async () => {
+    const keyToTest = braveKey.trim();
+    if (!keyToTest) {
+      setBraveResult({ valid: false, message: 'Please enter a Brave Search API key first.' });
+      return;
+    }
+    setTestingBrave(true);
+    setBraveResult(null);
+    try {
+      const res = await api.testSettingsKey('brave', keyToTest);
+      setBraveResult({ valid: res.valid, message: res.message });
+      if (res.valid) {
+        showToast('Brave Search Key verified successfully!', 'success');
+      } else {
+        showToast('Brave Search Key test failed: ' + res.message, 'error');
+      }
+    } catch (err) {
+      setBraveResult({ valid: false, message: err.message });
+      showToast('Brave test error: ' + err.message, 'error');
+    } finally {
+      setTestingBrave(false);
     }
   };
 
@@ -172,12 +210,39 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
     }
   };
 
+  const handleTestProxy = async () => {
+    const proxyToTest = ddgProxy.trim();
+    if (!proxyToTest) {
+      setProxyResult({ valid: false, message: 'Please enter a proxy URL first (e.g. http://ip:port or socks5://...)' });
+      return;
+    }
+    setTestingProxy(true);
+    setProxyResult(null);
+    try {
+      const res = await api.testSettingsKey('proxy', proxyToTest);
+      setProxyResult({ valid: res.valid, message: res.message });
+      if (res.valid) {
+        showToast('Proxy verified successfully!', 'success');
+      } else {
+        showToast('Proxy test failed: ' + res.message, 'error');
+      }
+    } catch (err) {
+      setProxyResult({ valid: false, message: err.message });
+      showToast('Proxy test error: ' + err.message, 'error');
+    } finally {
+      setTestingProxy(false);
+    }
+  };
+
   const handleSaveAll = async () => {
     setSaving(true);
     try {
       const payload = {};
       if (serpapiKey.trim() !== '') {
         payload.serpapi_key = serpapiKey.trim();
+      }
+      if (braveKey.trim() !== '') {
+        payload.brave_api_key = braveKey.trim();
       }
       if (githubToken.trim() !== '') {
         payload.github_token = githubToken.trim();
@@ -188,6 +253,9 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
       if (apolloKey.trim() !== '') {
         payload.apollo_api_key = apolloKey.trim();
       }
+      if (ddgProxy.trim() !== '') {
+        payload.ddg_proxy = ddgProxy.trim();
+      }
 
       const res = await api.saveSettingsKeys(payload);
       const keyData = res?.data || res;
@@ -195,13 +263,17 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
         setStatus(keyData);
       }
       setSerpapiKey('');
+      setBraveKey('');
       setGithubToken('');
       setHunterKey('');
       setApolloKey('');
+      setDdgProxy('');
       setSerpapiResult(null);
+      setBraveResult(null);
       setGithubResult(null);
       setHunterResult(null);
       setApolloResult(null);
+      setProxyResult(null);
       showToast('API credentials saved successfully!', 'success');
       onClose();
     } catch (err) {
@@ -216,9 +288,11 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
     try {
       const payload = {};
       if (provider === 'serpapi') payload.serpapi_key = '';
+      if (provider === 'brave') payload.brave_api_key = '';
       if (provider === 'github') payload.github_token = '';
       if (provider === 'hunter') payload.hunter_api_key = '';
       if (provider === 'apollo') payload.apollo_api_key = '';
+      if (provider === 'proxy') payload.ddg_proxy = '';
 
       const res = await api.saveSettingsKeys(payload);
       const keyData = res?.data || res;
@@ -322,6 +396,10 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
                     <span style={{ color: '#60a5fa', fontWeight: 600 }}>
                       🌐 Google X-Ray Active (SerpApi) + Free GitHub Engine
                     </span>
+                  ) : status.has_brave ? (
+                    <span style={{ color: '#f97316', fontWeight: 600 }}>
+                      🦁 Brave Search Active (2,000 queries/mo) + Free GitHub Engine
+                    </span>
                   ) : status.has_github ? (
                     <span style={{ color: '#a78bfa', fontWeight: 600 }}>
                       🐙 Authenticated GitHub (5,000 req/hr) + Free DuckDuckGo Engine
@@ -335,9 +413,12 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <span className={`badge ${status.has_serpapi ? 'badge-verified' : 'badge-platform-resume'}`}>
                 SerpApi: {status.has_serpapi ? 'Connected' : 'Free Mode'}
+              </span>
+              <span className={`badge ${status.has_brave ? 'badge-verified' : 'badge-platform-resume'}`}>
+                Brave: {status.has_brave ? 'Connected' : 'Free Mode'}
               </span>
               <span className={`badge ${status.has_github ? 'badge-verified' : 'badge-platform-resume'}`}>
                 GitHub: {status.has_github ? 'Connected' : 'Free Mode'}
@@ -364,6 +445,79 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
                 If you don't enter any keys, the system automatically uses <strong>DuckDuckGo</strong> for public web profiles and the <strong>Public GitHub API</strong>. Zero keys or subscriptions required.
               </div>
             </div>
+          </div>
+
+          {/* Anti-IP-Block Free Proxy for DuckDuckGo */}
+          <div className="glass-card" style={{ padding: '16px', background: 'rgba(30, 41, 59, 0.45)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Shield size={16} style={{ color: '#10b981' }} />
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
+                  DuckDuckGo Anti-IP-Block (Free Proxy Support)
+                </span>
+              </div>
+              {status.has_proxy && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="badge badge-verified" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
+                    Proxy Active: {status.proxy_masked}
+                  </span>
+                  <button 
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '10px', color: 'var(--danger)' }}
+                    onClick={() => handleClearKey('proxy')}
+                    disabled={saving}
+                    title="Remove proxy and use direct connection"
+                  >
+                    <Trash2 size={11} /> Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '10px', lineHeight: 1.5 }}>
+              Prevents DuckDuckGo from blocking or rate-limiting your residential/server IP during rapid sourcing searches. If the proxy ever drops, <strong>automatic zero-downtime fallback</strong> immediately routes searches directly so sourcing never stops.
+            </div>
+
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '12px', background: 'rgba(15, 23, 42, 0.6)', padding: '8px 10px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+              💡 <strong>Free Proxy Tip:</strong> You can use <a href="https://www.webshare.io" target="_blank" rel="noopener noreferrer" style={{ color: '#34d399', textDecoration: 'underline' }}>Webshare.io</a> (10 Free Proxies forever, zero credit card) or a local Tor SOCKS proxy (<code style={{ color: '#6ee7b7' }}>socks5://127.0.0.1:9050</code>).
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="text"
+                className="input-text"
+                placeholder={status.has_proxy ? 'Enter new proxy to update...' : 'e.g. http://username:pass@p.webshare.io:80 or socks5://127.0.0.1:9050'}
+                value={ddgProxy}
+                onChange={(e) => setDdgProxy(e.target.value)}
+                style={{ flex: 1, fontSize: '12px' }}
+              />
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={handleTestProxy}
+                disabled={testingProxy || !ddgProxy.trim()}
+              >
+                <RefreshCw size={12} className={testingProxy ? 'animate-spin' : ''} />
+                <span>{testingProxy ? 'Testing...' : 'Test Proxy'}</span>
+              </button>
+            </div>
+
+            {proxyResult && (
+              <div style={{
+                marginTop: '10px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                background: proxyResult.valid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                border: `1px solid ${proxyResult.valid ? 'var(--success)' : 'var(--danger)'}`,
+                color: proxyResult.valid ? 'var(--success)' : 'var(--danger)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                {proxyResult.valid ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+                <span>{proxyResult.message}</span>
+              </div>
+            )}
           </div>
 
           {/* Engine 2: SerpApi (Google X-Ray) */}
@@ -436,7 +590,77 @@ export default function ApiKeysModal({ isOpen, onClose, showToast }) {
             )}
           </div>
 
-          {/* Engine 3: GitHub Personal Access Token */}
+          {/* Engine 3: Brave Search API */}
+          <div className="glass-card" style={{ padding: '16px', background: 'rgba(30, 41, 59, 0.45)', border: '1px solid rgba(249, 115, 22, 0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={16} style={{ color: '#f97316' }} />
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
+                  Option 3: Brave Search API (2,000 Free Searches / Month)
+                </span>
+              </div>
+              {status.has_brave && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="badge badge-verified" style={{ background: 'rgba(249, 115, 22, 0.2)', color: '#fb923c', border: '1px solid rgba(249, 115, 22, 0.4)' }}>
+                    Connected: {status.brave_masked}
+                  </span>
+                  <button 
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '10px', color: 'var(--danger)' }}
+                    onClick={() => handleClearKey('brave')}
+                    disabled={saving}
+                    title="Remove Brave key"
+                  >
+                    <Trash2 size={11} /> Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '12px' }}>
+              High-speed, privacy-first search index with <strong>2,000 free searches every month</strong>. 100% datacenter-safe with no IP blocks on cloud servers.
+              Get your key from <a href="https://brave.com/search/api/" target="_blank" rel="noopener noreferrer" style={{ color: '#fb923c', textDecoration: 'underline' }}>brave.com/search/api</a>.
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="password"
+                className="input-text"
+                placeholder={status.has_brave ? 'Enter new Brave key to update...' : 'Paste your Brave Search API Key (BSA...)...'}
+                value={braveKey}
+                onChange={(e) => setBraveKey(e.target.value)}
+                style={{ flex: 1, fontSize: '12px' }}
+              />
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={handleTestBrave}
+                disabled={testingBrave || !braveKey.trim()}
+              >
+                <RefreshCw size={12} className={testingBrave ? 'animate-spin' : ''} />
+                <span>{testingBrave ? 'Testing...' : 'Test Key'}</span>
+              </button>
+            </div>
+
+            {braveResult && (
+              <div style={{
+                marginTop: '10px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                background: braveResult.valid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                border: `1px solid ${braveResult.valid ? 'var(--success)' : 'var(--danger)'}`,
+                color: braveResult.valid ? 'var(--success)' : 'var(--danger)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                {braveResult.valid ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+                <span>{braveResult.message}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Engine 4: GitHub Personal Access Token */}
           <div className="glass-card" style={{ padding: '16px', background: 'rgba(30, 41, 59, 0.45)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

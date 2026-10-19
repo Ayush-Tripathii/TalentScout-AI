@@ -38,6 +38,8 @@ def get_stored_key(key_name: str) -> Optional[str]:
     env_mapping = {
         "serpapi_key": "SERPAPI_API_KEY",
         "github_token": "GITHUB_TOKEN",
+        "brave_api_key": "BRAVE_API_KEY",
+        "ddg_proxy": "DDG_PROXY",
     }
     env_var = env_mapping.get(key_name)
     if env_var and os.getenv(env_var):
@@ -47,28 +49,53 @@ def get_stored_key(key_name: str) -> Optional[str]:
 
 
 class LiveSearchProvider(SearchProvider):
-    """Hybrid Live Search Engine combining SerpApi, GitHub API, and free DuckDuckGo."""
+    """Hybrid Live Search Engine combining SerpApi, Brave Search, GitHub API, and free DuckDuckGo."""
 
     def __init__(self):
-        self.ddgs = DDGS() if DDGS is not None else None
+        self.proxy = get_stored_key("ddg_proxy")
+        try:
+            self.ddgs = DDGS(proxy=self.proxy) if (DDGS is not None and self.proxy) else (DDGS() if DDGS is not None else None)
+        except Exception:
+            self.ddgs = DDGS() if DDGS is not None else None
 
     def get_provider_status(self) -> Dict[str, Any]:
         """Return status of all search engines (free default + optional keys)."""
         serpapi = get_stored_key("serpapi_key")
+        brave = get_stored_key("brave_api_key")
         github = get_stored_key("github_token")
+        proxy = get_stored_key("ddg_proxy")
+        
+        # Determine active search engine description
+        active_mode = "free_tier"
+        if serpapi and github:
+            active_mode = "enterprise_hybrid"
+        elif brave and github:
+            active_mode = "brave_github_hybrid"
+        elif serpapi:
+            active_mode = "google_xray"
+        elif brave:
+            active_mode = "brave_search"
+        elif github:
+            active_mode = "github_pro"
+
         return {
             "free_engine_active": True,
             "has_serpapi": bool(serpapi),
             "serpapi_masked": f"••••{serpapi[-4:]}" if serpapi and len(serpapi) >= 4 else None,
+            "has_brave": bool(brave),
+            "brave_masked": f"••••{brave[-4:]}" if brave and len(brave) >= 4 else None,
             "has_github": bool(github),
             "github_masked": f"••••{github[-4:]}" if github and len(github) >= 4 else None,
-            "active_mode": "enterprise_hybrid" if (serpapi and github) else ("google_xray" if serpapi else ("github_pro" if github else "free_tier")),
+            "has_proxy": bool(proxy),
+            "proxy_masked": f"••••{proxy[-6:]}" if proxy and len(proxy) >= 6 else None,
+            "active_mode": active_mode,
         }
 
     def search(self, query: str, limit: int = 20, platform: Optional[str] = None) -> List[RawSearchResult]:
         """Execute live search using the best available provider."""
         platform_hint = (platform or "").lower()
         serpapi_key = get_stored_key("serpapi_key")
+        brave_api_key = get_stored_key("brave_api_key")
         github_token = get_stored_key("github_token")
 
         # -------------------------------------------------------------
@@ -88,7 +115,13 @@ class LiveSearchProvider(SearchProvider):
             if serp_results:
                 return serp_results[:limit]
 
-        # Tier B: Default Free Engine (DuckDuckGo with intelligent syntax fallback)
+        # Tier B: If customer provided Brave Search API key (2,000 free searches/mo)
+        if brave_api_key:
+            brave_results = self._search_brave(query, limit, platform_hint, brave_api_key)
+            if brave_results:
+                return brave_results[:limit]
+
+        # Tier C: Default Free Engine (DuckDuckGo with intelligent syntax fallback)
         return self._search_duckduckgo(query, limit, platform_hint)
 
     def _search_serpapi(self, query: str, limit: int, platform_hint: str, api_key: str) -> List[RawSearchResult]:
@@ -141,6 +174,66 @@ class LiveSearchProvider(SearchProvider):
                         snippet=snippet,
                         platform=detected_platform,
                         engine="google_serpapi"
+                    ))
+        except Exception:
+            pass
+
+        return results
+
+    def _search_brave(self, query: str, limit: int, platform_hint: str, api_key: str) -> List[RawSearchResult]:
+        """Execute real web search via official Brave Search API (2,000 free searches/month)."""
+        results: List[RawSearchResult] = []
+        try:
+            headers = {
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+                "X-Subscription-Token": api_key,
+                "User-Agent": "TalentScout-Engine/1.0"
+            }
+            params = {
+                "q": query,
+                "count": min(max(limit, 10), 20),
+            }
+            resp = httpx.get("https://api.search.brave.com/res/v1/web/search", headers=headers, params=params, timeout=12.0)
+            if resp.status_code == 200:
+                data = resp.json()
+                web_results = data.get("web", {}).get("results", [])
+                for item in web_results:
+                    url = item.get("url") or ""
+                    title = item.get("title") or ""
+                    snippet = item.get("description") or ""
+
+                    if not url or not title:
+                        continue
+
+                    # Filter out search engines and non-candidate hubs
+                    if any(bad in url.lower() for bad in ["duckduckgo.com", "bing.com", "google.com", "search.brave.com"]):
+                        continue
+                    if "linkedin.com" in url.lower() and any(ign in url.lower() for ign in ["/jobs/", "/company/", "/pulse/", "/posts/", "/dir/"]):
+                        continue
+
+                    detected_platform = platform_hint or "web"
+                    if "linkedin.com/in" in url.lower() or "linkedin.com/pub" in url.lower():
+                        detected_platform = "linkedin"
+                    elif "github.com" in url.lower():
+                        detected_platform = "github"
+                    elif "naukri.com" in url.lower() or platform_hint == "naukri":
+                        detected_platform = "naukri"
+                    elif "foundit.in" in url.lower() or "monsterindia" in url.lower() or platform_hint == "foundit":
+                        detected_platform = "foundit"
+                    elif "shine.com" in url.lower() or platform_hint == "shine":
+                        detected_platform = "shine"
+                    elif "apna.co" in url.lower() or platform_hint == "apna":
+                        detected_platform = "apna"
+                    elif platform_hint in ["public_resume", "resume"] or "github.io" in url.lower() or url.lower().endswith(".pdf") or url.lower().endswith(".docx"):
+                        detected_platform = "public_resume"
+
+                    results.append(RawSearchResult(
+                        url=url,
+                        title=title,
+                        snippet=snippet,
+                        platform=detected_platform,
+                        engine="brave_search"
                     ))
         except Exception:
             pass
@@ -205,153 +298,70 @@ class LiveSearchProvider(SearchProvider):
                 continue
             try:
                 raw_items = list(self.ddgs.text(q_attempt.strip(), max_results=limit * 2))
-                for item in raw_items:
-                    url = item.get("href") or ""
-                    title = item.get("title") or ""
-                    snippet = item.get("body") or ""
+            except Exception:
+                # If proxy attempt failed or timed out, attempt direct fallback
+                if self.proxy:
+                    try:
+                        direct_client = DDGS()
+                        raw_items = list(direct_client.text(q_attempt.strip(), max_results=limit * 2))
+                    except Exception:
+                        continue
+                else:
+                    continue
 
-                    if not url or not title:
+            for item in raw_items:
+                url = item.get("href") or ""
+                title = item.get("title") or ""
+                snippet = item.get("body") or ""
+
+                if not url or not title:
+                    continue
+
+                # Filter out search engines and generic educational/corporate sites
+                if any(bad in url.lower() for bad in ["duckduckgo.com", "bing.com", "google.com", "yahoo.com"]):
+                    continue
+                if any(bad in url.lower() for bad in non_candidate_domains):
+                    continue
+
+                if "linkedin.com" in url.lower():
+                    if any(ign in url.lower() for ign in ["/jobs/", "/jobs", "/company/", "/pulse/", "/posts/", "/dir/", "/learning/"]):
                         continue
 
-                    # Filter out search engines and generic educational/corporate sites
-                    if any(bad in url.lower() for bad in ["duckduckgo.com", "bing.com", "google.com", "yahoo.com"]):
-                        continue
-                    if any(bad in url.lower() for bad in non_candidate_domains):
-                        continue
+                detected_platform = platform_hint or "web"
+                if "linkedin.com/in" in url.lower() or "linkedin.com/pub" in url.lower():
+                    detected_platform = "linkedin"
+                elif "github.com" in url.lower():
+                    detected_platform = "github"
+                elif "naukri.com" in url.lower() or platform_hint == "naukri":
+                    detected_platform = "naukri"
+                elif "foundit.in" in url.lower() or "monsterindia" in url.lower() or platform_hint == "foundit":
+                    detected_platform = "foundit"
+                elif "shine.com" in url.lower() or platform_hint == "shine":
+                    detected_platform = "shine"
+                elif "apna.co" in url.lower() or platform_hint == "apna":
+                    detected_platform = "apna"
+                elif is_public_resume or "github.io" in url.lower() or url.lower().endswith(".pdf") or url.lower().endswith(".docx"):
+                    detected_platform = "public_resume"
 
-                    if "linkedin.com" in url.lower():
-                        if any(ign in url.lower() for ign in ["/jobs/", "/jobs", "/company/", "/pulse/", "/posts/", "/dir/", "/learning/"]):
-                            continue
+                if any(r.url == url for r in results):
+                    continue
 
-                    detected_platform = platform_hint or "web"
-                    if "linkedin.com/in" in url.lower() or "linkedin.com/pub" in url.lower():
-                        detected_platform = "linkedin"
-                    elif "github.com" in url.lower():
-                        detected_platform = "github"
-                    elif "naukri.com" in url.lower() or platform_hint == "naukri":
-                        detected_platform = "naukri"
-                    elif "foundit.in" in url.lower() or "monsterindia" in url.lower() or platform_hint == "foundit":
-                        detected_platform = "foundit"
-                    elif "shine.com" in url.lower() or platform_hint == "shine":
-                        detected_platform = "shine"
-                    elif "apna.co" in url.lower() or platform_hint == "apna":
-                        detected_platform = "apna"
-                    elif is_public_resume or "github.io" in url.lower() or url.lower().endswith(".pdf") or url.lower().endswith(".docx"):
-                        detected_platform = "public_resume"
-
-                    if any(r.url == url for r in results):
-                        continue
-
-                    results.append(RawSearchResult(
-                        url=url,
-                        title=title,
-                        snippet=snippet,
-                        platform=detected_platform,
-                        engine="ddgs"
-                    ))
-
-                    if len(results) >= limit:
-                        break
+                results.append(RawSearchResult(
+                    url=url,
+                    title=title,
+                    snippet=snippet,
+                    platform=detected_platform,
+                    engine="ddgs"
+                ))
 
                 if len(results) >= limit:
                     break
-            except Exception:
-                continue
 
-        # If search engine returned 0 results (rate-limiting or blocking on job boards),
-        # automatically provide high-quality verified talent matching the platform criteria
-        if len(results) == 0:
-            fallback = self._fallback_platform_candidates(query, limit, platform_hint, clean_terms)
-            results.extend(fallback)
+            if len(results) >= limit:
+                break
 
+        # Return strictly genuine search results - zero dummy or synthesized candidate injection
         return results[:limit]
-
-    def _fallback_platform_candidates(
-        self,
-        query: str,
-        limit: int,
-        platform_hint: str,
-        clean_terms: List[str]
-    ) -> List[RawSearchResult]:
-        """Synthesize high-fit candidate profiles tailored to query and platform when search engines rate-limit."""
-        import uuid
-        results: List[RawSearchResult] = []
-
-        role_title = "Software Engineer"
-        for t in ["Developer", "Engineer", "Architect", "Lead", "Specialist", "Consultant", "Manager"]:
-            for ct in clean_terms:
-                if t.lower() in ct.lower():
-                    role_title = ct.title()
-                    break
-
-        tech_skills = [
-            w for w in clean_terms 
-            if w.lower() not in ["developer", "engineer", "lead", "architect", "manager", "bengaluru", "bangalore", "pune", "mumbai", "hyderabad", "delhi", "noida", "gurgaon", "chennai"]
-        ]
-        if not tech_skills:
-            tech_skills = ["Java", "Spring Boot", "Microservices", "REST API", "SQL"]
-
-        talent_pool = [
-            ("Aarav Sundaram", "Senior Backend Engineer", "Bengaluru", 5.5, ["Java", "Spring Boot", "Microservices", "Docker", "AWS", "PostgreSQL"]),
-            ("Deepika Nambiar", "Lead Full Stack Developer", "Pune", 6.5, ["Java", "React", "TypeScript", "Spring Boot", "Kafka", "MySQL"]),
-            ("Karthik Venkat", "Backend Systems Specialist", "Hyderabad", 4.0, ["Python", "FastAPI", "PostgreSQL", "Docker", "Redis", "Microservices"]),
-            ("Pooja Kulkarni", "Staff Cloud & DevOps Engineer", "Bengaluru", 7.5, ["Kubernetes", "Terraform", "Docker", "AWS", "Go", "Python"]),
-            ("Rohan Deshmukh", "Senior Frontend Platform Engineer", "Mumbai", 5.0, ["React", "TypeScript", "Next.js", "Redux", "TailwindCSS", "Node.js"]),
-            ("Sneha Chawla", "Data Platform & ML Specialist", "Gurgaon", 4.5, ["Python", "PyTorch", "FastAPI", "SQL", "Pandas", "Scikit-Learn"]),
-            ("Vikramaditya Sengupta", "Enterprise Java Architect", "Chennai", 8.0, ["Java 17", "Spring Boot", "Distributed Systems", "Kafka", "PostgreSQL"]),
-            ("Meera Pillai", "Fullstack Node & React Developer", "Bengaluru", 4.2, ["Node.js", "React", "TypeScript", "MongoDB", "Express", "Docker"]),
-            ("Aniket Saxena", "Senior SRE & Cloud Architect", "Pune", 6.0, ["Kubernetes", "AWS", "Terraform", "Python", "CI/CD", "Prometheus"]),
-            ("Divya Raghavan", "Senior Backend Developer", "Hyderabad", 5.2, ["Java", "Spring Boot", "Microservices", "REST API", "Redis", "Git"]),
-        ]
-
-        plat = platform_hint or "naukri"
-
-        for name, def_headline, def_loc, exp, def_skills in talent_pool[:limit]:
-            uid_hex = uuid.uuid4().hex[:6]
-            slug = name.lower().replace(" ", "-")
-            headline = f"{role_title} ({', '.join(tech_skills[:3])})" if tech_skills else def_headline
-            combined_skills = list(dict.fromkeys(tech_skills[:3] + def_skills))
-            skills_str = ", ".join(combined_skills)
-            loc = def_loc
-
-            clean_email = f"{slug.replace('-', '.')}@gmail.com"
-            phone_suffix = 10000 + int(uid_hex, 16) % 89999
-            clean_phone = f"+91 98201 {phone_suffix}"
-
-            if plat == "naukri":
-                url = f"https://www.naukri.com/profile/{slug}-{uid_hex}"
-                title = f"{name} - {headline} | Naukri India"
-                snippet = f"{name} is a {headline} with {exp} years of experience based in {loc}. Proven track record in {skills_str}. Current Location: {loc}. Verified on Naukri. Contact: {clean_email} | {clean_phone}"
-            elif plat == "foundit":
-                url = f"https://www.foundit.in/resume/{slug}-{uid_hex}"
-                title = f"{name} - {headline} | foundit India"
-                snippet = f"{name} | {headline} in {loc}. Total Experience: {exp} years. Key competencies: {skills_str}. Candidate profile on foundit India (Monster). Contact: {clean_email} | {clean_phone}"
-            elif plat == "shine":
-                url = f"https://www.shine.com/myshine/profile/{slug}-{uid_hex}"
-                title = f"{name} - {headline} | Shine Talent"
-                snippet = f"{name} ({headline}). Location: {loc}. Experience: {exp} years. Core skills: {skills_str}. Shine India verified job seeker profile. Contact: {clean_email} | {clean_phone}"
-            elif plat in ["public_resume", "resume"]:
-                url = f"https://{slug}.github.io/resume.pdf"
-                title = f"Resume - {name} ({headline}) | Curriculum Vitae"
-                snippet = f"Curriculum Vitae of {name}. {headline} located in {loc}. {exp} years hands-on experience. Skills: {skills_str}. Contact: {clean_email} | {clean_phone}"
-            elif plat == "github":
-                url = f"https://github.com/{slug.replace('-', '')}"
-                title = f"{slug.replace('-', '')} ({name}) · GitHub"
-                snippet = f"{name} - {headline} in {loc}. Repositories focusing on {skills_str}. Contact: {clean_email}"
-            else:
-                url = f"https://in.linkedin.com/in/{slug}-{uid_hex}"
-                title = f"{name} - {headline} - {loc} | LinkedIn"
-                snippet = f"{name} is a {headline} in {loc} with {exp} years experience in {skills_str}. Contact: {clean_email} | {clean_phone}"
-
-            results.append(RawSearchResult(
-                url=url,
-                title=title,
-                snippet=snippet,
-                platform=plat,
-                engine="talent_registry"
-            ))
-
-        return results
 
     def _extract_clean_keywords(self, query: str) -> List[str]:
         """Strip operators into pure search terms while preserving essential titles."""
@@ -464,3 +474,38 @@ class LiveSearchProvider(SearchProvider):
             return False, f"Invalid token (HTTP {r.status_code})"
         except Exception as e:
             return False, f"Connection error: {str(e)}"
+
+    @staticmethod
+    def test_brave_api_key(key: str) -> Tuple[bool, str]:
+        """Test validity of a Brave Search API subscription token."""
+        try:
+            headers = {
+                "Accept": "application/json",
+                "X-Subscription-Token": key.strip(),
+                "User-Agent": "TalentScout-Engine/1.0"
+            }
+            r = httpx.get("https://api.search.brave.com/res/v1/web/search", headers=headers, params={"q": "Developer", "count": 1}, timeout=8.0)
+            if r.status_code == 200:
+                return True, "Valid! Brave Search API verified (2,000 queries/month free tier)."
+            elif r.status_code in [401, 403]:
+                return False, "Invalid Brave Search Token (Unauthorized 401/403)."
+            return False, f"Brave API returned HTTP {r.status_code}"
+        except Exception as e:
+            return False, f"Connection error: {str(e)}"
+
+    @staticmethod
+    def test_proxy_connection(proxy_url: str) -> Tuple[bool, str]:
+        """Test whether a free/custom proxy successfully routes traffic and masks IP."""
+        if not proxy_url or not proxy_url.strip():
+            return False, "Proxy URL cannot be empty."
+        clean_proxy = proxy_url.strip()
+        try:
+            with httpx.Client(proxy=clean_proxy, timeout=6.0) as client:
+                r = client.get("https://httpbin.org/ip")
+                if r.status_code == 200:
+                    origin = r.json().get("origin", "Active")
+                    return True, f"Proxy verified! Traffic successfully masked via: {origin}"
+                return False, f"Proxy responded with HTTP {r.status_code}"
+        except Exception as e:
+            return False, f"Proxy connection failed: {type(e).__name__} ({str(e)[:60]})"
+

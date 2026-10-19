@@ -344,6 +344,10 @@ class ThreatDetector:
             if not clean_key.startswith("ts_live_") or len(clean_key) < 24:
                 return False, "Invalid TalentScout API key format. Must start with 'ts_live_' prefix."
 
+        elif provider_lower == "proxy":
+            if not re.match(r"^(http|https|socks5|socks5h)://[a-zA-Z0-9_\-\.:@]+$", clean_key):
+                return False, "Invalid proxy format. Must start with http://, https://, or socks5://"
+
         else:
             # Generic token check (min 16 chars, base64/hex/alphanumeric)
             if len(clean_key) < 12:
