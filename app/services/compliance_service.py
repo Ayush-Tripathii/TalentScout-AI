@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 import json
 import logging
 from typing import Any, Dict, List, Optional
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, delete
 
 from app.db import engine
 from app.models.candidate import (
@@ -202,12 +202,29 @@ class ComplianceService:
             ).all()
 
             # Delete associated records
+            from app.models.scheduled_sourcing import SourcingAlertNotification
+            from app.models.enrichment import EnrichmentUsage
+
+            for notif in session.exec(select(SourcingAlertNotification).where(SourcingAlertNotification.candidate_id == candidate_id)).all():
+                session.delete(notif)
+            for enr in session.exec(select(EnrichmentUsage).where(EnrichmentUsage.candidate_id == candidate_id)).all():
+                session.delete(enr)
+            for cp in session.exec(select(ContactPoint).where(ContactPoint.candidate_id == candidate_id)).all():
+                session.delete(cp)
+            for cs in session.exec(select(CandidateSource).where(CandidateSource.candidate_id == candidate_id)).all():
+                session.delete(cs)
+            for m in session.exec(select(Match).where(Match.candidate_id == candidate_id)).all():
+                session.delete(m)
+            for p in session.exec(select(PipelineStatus).where(PipelineStatus.candidate_id == candidate_id)).all():
+                session.delete(p)
+            for fr in session.exec(select(FormResponse).where(FormResponse.candidate_id == candidate_id)).all():
+                session.delete(fr)
+            for n in session.exec(select(Note).where(Note.candidate_id == candidate_id)).all():
+                session.delete(n)
             for l in links:
                 session.delete(l)
-
             for o in outreach_events:
                 session.delete(o)
-
             for r in resumes:
                 session.delete(r)
 
@@ -238,8 +255,57 @@ class ComplianceService:
 
             return {
                 "status": "success",
-                "erased_candidate_id": candidate_id,
-                "message": f"Candidate '{cand_name}' and all associated personal data have been completely erased in compliance with DPDP Act.",
+                "message": f"Candidate {cand_name} and all associated records permanently purged from database.",
+            }
+
+    def purge_all_candidates(
+        self,
+        reason: str = "Administrator bulk candidate database purge from CMS",
+        performed_by: str = "admin@talentscout.ai",
+    ) -> Dict[str, Any]:
+        """Permanently delete ALL candidate profiles and all associated records across the database."""
+        from app.models.scheduled_sourcing import SourcingAlertNotification
+        from app.models.enrichment import EnrichmentUsage
+        from app.models.form_response import FormResponse
+        from app.models.match import Match
+        from app.models.pipeline import PipelineStatus, OutreachEvent, Note
+        from app.models.resume import Resume
+        from app.models.candidate import Candidate, CandidateSource, CandidateLink, ContactPoint
+
+        with Session(engine, expire_on_commit=False) as session:
+            count = len(session.exec(select(Candidate)).all())
+
+            # Cascade delete all candidate-linked records
+            session.exec(delete(SourcingAlertNotification))
+            session.exec(delete(EnrichmentUsage))
+            session.exec(delete(FormResponse))
+            session.exec(delete(Note))
+            session.exec(delete(OutreachEvent))
+            session.exec(delete(PipelineStatus))
+            session.exec(delete(Match))
+            session.exec(delete(Resume))
+            session.exec(delete(CandidateLink))
+            session.exec(delete(ContactPoint))
+            session.exec(delete(CandidateSource))
+            session.exec(delete(Candidate))
+            session.commit()
+
+            # Record permanent audit log trail
+            log_audit_event(
+                action="bulk_candidate_purge",
+                entity_type="candidate",
+                entity_id="all",
+                details={
+                    "reason": reason,
+                    "purged_candidate_count": count,
+                },
+                performed_by=performed_by,
+            )
+
+            return {
+                "status": "success",
+                "purged_count": count,
+                "message": f"Successfully deleted all {count} candidate profiles and associated records from database.",
             }
 
     def purge_expired_records(

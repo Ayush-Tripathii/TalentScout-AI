@@ -33,7 +33,11 @@ import {
   Zap,
   Globe,
   Radio,
-  LogOut
+  LogOut,
+  ShieldAlert,
+  X,
+  MapPin,
+  Briefcase
 } from 'lucide-react';
 import { api } from '../api';
 
@@ -49,6 +53,16 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogou
   const [showAllKeys, setShowAllKeys] = useState(true); // Default to TRUE so user keys & secrets are clearly visible
   const [revealedKeys, setRevealedKeys] = useState({});
   const [copiedKeyId, setCopiedKeyId] = useState(null);
+
+  // Candidate Database Management State
+  const [adminCandidates, setAdminCandidates] = useState([]);
+  const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
+  const [candidateToDelete, setCandidateToDelete] = useState(null);
+  const [isDeletingCandidate, setIsDeletingCandidate] = useState(false);
+  const [isPurgeAllModalOpen, setIsPurgeAllModalOpen] = useState(false);
+  const [isPurgingAll, setIsPurgingAll] = useState(false);
+  const [purgeConfirmText, setPurgeConfirmText] = useState('');
 
   // User Provisioning & Edit Modals
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
@@ -122,11 +136,65 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogou
       if (overviewRes && overviewRes.data) {
         setTelemetry(overviewRes.data);
       }
+
+      // Load candidates list & count
+      loadAdminCandidates();
     } catch (err) {
       console.error('Error fetching admin data:', err);
       if (showToast) showToast('Failed to load some admin telemetry data.', 'error');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAdminCandidates = async (query = '') => {
+    setIsLoadingCandidates(true);
+    try {
+      const res = await api.getAdminCandidates(query, adminToken);
+      if (res && res.candidates) {
+        setAdminCandidates(res.candidates);
+      }
+    } catch (err) {
+      console.error('Failed to load admin candidates:', err);
+    } finally {
+      setIsLoadingCandidates(false);
+    }
+  };
+
+  const handleDeleteCandidate = async (candidate) => {
+    if (!candidate) return;
+    setIsDeletingCandidate(true);
+    try {
+      const res = await api.deleteAdminCandidate(candidate.id, adminToken);
+      if (showToast) showToast(res.message || `Candidate '${candidate.full_name}' permanently deleted.`, 'success');
+      setCandidateToDelete(null);
+      await loadAdminCandidates();
+      loadAllAdminData();
+    } catch (err) {
+      if (showToast) showToast('Failed to delete candidate: ' + err.message, 'error');
+    } finally {
+      setIsDeletingCandidate(false);
+    }
+  };
+
+  const handlePurgeAllCandidates = async (e) => {
+    if (e) e.preventDefault();
+    if (purgeConfirmText.trim().toUpperCase() !== 'DELETE ALL') {
+      if (showToast) showToast('Please type DELETE ALL into the confirmation box to proceed.', 'error');
+      return;
+    }
+    setIsPurgingAll(true);
+    try {
+      const res = await api.purgeAllAdminCandidates(adminToken);
+      if (showToast) showToast(res.message || 'Successfully purged all candidate profiles from database!', 'success');
+      setIsPurgeAllModalOpen(false);
+      setPurgeConfirmText('');
+      await loadAdminCandidates();
+      loadAllAdminData();
+    } catch (err) {
+      if (showToast) showToast('Failed to purge candidates: ' + err.message, 'error');
+    } finally {
+      setIsPurgingAll(false);
     }
   };
 
@@ -438,6 +506,7 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogou
         {[
           { id: 'overview', label: 'Executive Dashboard', icon: Activity },
           { id: 'users', label: `Tracked Users & API Keys (${allUsers.length})`, icon: Users },
+          { id: 'candidates', label: `Candidate Profiles (${adminCandidates.length})`, icon: UserCheck },
           { id: 'apikeys', label: 'Central API Keys Hub', icon: Key },
           { id: 'cms', label: 'Landing Page CMS Editor', icon: Edit3 },
           { id: 'audits', label: 'DPDP Security Audit Trail', icon: FileText },
@@ -509,16 +578,21 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogou
                 </div>
               </div>
 
-              <div className="card landing-card-hover" style={{ padding: '20px' }}>
+              <div 
+                className="card landing-card-hover" 
+                style={{ padding: '20px', cursor: 'pointer' }}
+                onClick={() => setActiveTab('candidates')}
+                title="Click to view and manage candidate profiles"
+              >
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
                   <span>VERIFIED CANDIDATE POOL</span>
                   <Database size={16} style={{ color: '#34d399' }} />
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: 900, color: '#fff', marginTop: '8px' }}>
-                  {telemetry?.stats?.total_candidates ?? 46}
+                  {adminCandidates.length || telemetry?.stats?.total_candidates || 0}
                 </div>
-                <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px', fontWeight: 600 }}>
-                  100% Genuine • Strict 0 Dummy Verified
+                <div style={{ fontSize: '11px', color: '#10b981', marginTop: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>Manage & Purge Profiles →</span>
                 </div>
               </div>
 
@@ -1063,6 +1137,292 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogou
                       <tr>
                         <td colSpan={7} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-dim)' }}>
                           No users found matching query "{userSearchQuery}".
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB: CANDIDATE PROFILES & BULK PURGE CONTROLS            */}
+        {/* ======================================================== */}
+        {activeTab === 'candidates' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Header with Search and "Wipe All Candidates" Danger CTA */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span>Candidate Profiles & Identity Database</span>
+                  <span className="badge badge-accent" style={{ fontSize: '12px' }}>
+                    {adminCandidates.length} {adminCandidates.length === 1 ? 'Profile' : 'Profiles'}
+                  </span>
+                </h2>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Audit, delete individual candidate profiles, or execute an authorized bulk wipe of candidate records under DPDP statutory rules.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button 
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => loadAdminCandidates(candidateSearchQuery)}
+                  disabled={isLoadingCandidates}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', fontWeight: 600 }}
+                  title="Refresh Candidate Profiles"
+                >
+                  <RefreshCw size={14} className={isLoadingCandidates ? 'animate-spin' : ''} />
+                  <span>Refresh</span>
+                </button>
+
+                <button 
+                  className="btn btn-danger btn-sm"
+                  onClick={() => {
+                    setPurgeConfirmText('');
+                    setIsPurgeAllModalOpen(true);
+                  }}
+                  disabled={adminCandidates.length === 0}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    padding: '9px 16px', 
+                    fontWeight: 800,
+                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(220, 38, 38, 0.4) 100%)',
+                    border: '1px solid rgba(239, 68, 68, 0.6)',
+                    color: '#fee2e2',
+                    boxShadow: '0 4px 14px rgba(239, 68, 68, 0.25)',
+                    cursor: adminCandidates.length === 0 ? 'not-allowed' : 'pointer'
+                  }}
+                  title="Permanently delete all candidates from database"
+                >
+                  <Trash2 size={15} style={{ color: '#ef4444' }} />
+                  <span>Wipe All Candidate Profiles</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="card" style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '300px' }}>
+                <Search size={16} style={{ color: 'var(--text-muted)' }} />
+                <input 
+                  type="text"
+                  className="text-input"
+                  placeholder="Search candidates by full name, headline, location, or tech skills..."
+                  value={candidateSearchQuery}
+                  onChange={(e) => {
+                    setCandidateSearchQuery(e.target.value);
+                    loadAdminCandidates(e.target.value);
+                  }}
+                  style={{ width: '100%', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                <span>Showing <strong>{adminCandidates.length}</strong> records</span>
+                <span style={{ color: 'var(--border-subtle)' }}>•</span>
+                <span style={{ color: '#34d399' }}>
+                  <strong>{adminCandidates.filter(c => c.contacts && c.contacts.length > 0).length}</strong> with contact details
+                </span>
+              </div>
+            </div>
+
+            {/* Candidates Table */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255, 255, 255, 0.03)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '14px 18px' }}>Candidate Profile</th>
+                      <th style={{ padding: '14px 18px' }}>Contact Points & Verification</th>
+                      <th style={{ padding: '14px 18px' }}>Skills & Experience</th>
+                      <th style={{ padding: '14px 18px' }}>Sourced Date</th>
+                      <th style={{ padding: '14px 18px', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminCandidates.map((c) => {
+                      const contacts = c.contacts || [];
+                      const sources = c.sources || [];
+                      const skills = Array.isArray(c.skills) ? c.skills : [];
+
+                      return (
+                        <tr 
+                          key={c.id} 
+                          style={{ 
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {/* Candidate Identity */}
+                          <td style={{ padding: '14px 18px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%)',
+                                border: '1px solid rgba(99, 102, 241, 0.4)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 800,
+                                fontSize: '14px',
+                                color: '#a5b4fc',
+                                flexShrink: 0
+                              }}>
+                                {c.full_name ? c.full_name.charAt(0).toUpperCase() : 'C'}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 800, color: '#fff', fontSize: '13.5px' }}>
+                                  {c.full_name}
+                                </div>
+                                <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {c.headline || 'Technical Professional'}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10.5px', color: 'var(--text-dim)', marginTop: '4px' }}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                    <MapPin size={10} style={{ color: '#818cf8' }} />
+                                    {c.current_location || 'India'}
+                                  </span>
+                                  {c.experience_years && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{c.experience_years} yrs exp</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Contact Points */}
+                          <td style={{ padding: '14px 18px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                              {contacts.map((cp, idx) => (
+                                <div key={idx} style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  background: cp.type === 'phone' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                                  border: `1px solid ${cp.type === 'phone' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(99, 102, 241, 0.25)'}`,
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  width: 'fit-content',
+                                  fontSize: '11px'
+                                }}>
+                                  {cp.type === 'phone' ? <Phone size={10} style={{ color: '#34d399' }} /> : <Mail size={10} style={{ color: '#818cf8' }} />}
+                                  <span style={{ color: '#fff', fontWeight: 600 }}>{cp.value}</span>
+                                  {cp.verified && (
+                                    <CheckCircle2 size={10} style={{ color: '#34d399' }} title="Verified" />
+                                  )}
+                                </div>
+                              ))}
+                              {sources.map((s, idx) => (
+                                <a 
+                                  key={idx} 
+                                  href={s.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    gap: '4px', 
+                                    fontSize: '10.5px', 
+                                    color: '#818cf8', 
+                                    textDecoration: 'none' 
+                                  }}
+                                >
+                                  <ExternalLink size={10} />
+                                  <span>{s.platform?.toUpperCase() || 'SOURCE'}</span>
+                                </a>
+                              ))}
+                              {contacts.length === 0 && sources.length === 0 && (
+                                <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                                  No contact points captured
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Skills */}
+                          <td style={{ padding: '14px 18px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '240px' }}>
+                              {skills.slice(0, 5).map((sk, idx) => (
+                                <span 
+                                  key={idx} 
+                                  style={{
+                                    fontSize: '10px',
+                                    background: 'rgba(255, 255, 255, 0.06)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    color: '#e2e8f0',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontWeight: 500
+                                  }}
+                                >
+                                  {sk}
+                                </span>
+                              ))}
+                              {skills.length > 5 && (
+                                <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
+                                  +{skills.length - 5} more
+                                </span>
+                              )}
+                              {skills.length === 0 && (
+                                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>General Tech</span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Created Date */}
+                          <td style={{ padding: '14px 18px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                            {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Recent'}
+                          </td>
+
+                          {/* Actions: Delete Profile */}
+                          <td style={{ padding: '14px 18px', textAlign: 'right' }}>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => setCandidateToDelete(c)}
+                              title="Permanently Delete This Candidate Profile"
+                              style={{
+                                padding: '5px 10px',
+                                fontSize: '11px',
+                                color: '#f87171',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Trash2 size={12} style={{ color: '#ef4444' }} />
+                              <span>Delete Profile</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {adminCandidates.length === 0 && (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '48px 24px', textAlign: 'center' }}>
+                          <Database size={32} style={{ color: 'var(--text-dim)', margin: '0 auto 12px', display: 'block', opacity: 0.5 }} />
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>No Candidate Profiles in Database</div>
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                            {candidateSearchQuery ? `No candidates found matching query "${candidateSearchQuery}".` : 'The candidate database is currently empty or has been purged.'}
+                          </p>
                         </td>
                       </tr>
                     )}
@@ -1885,6 +2245,165 @@ export default function AdminPanel({ onBackToWorkspace, onBackToLanding, onLogou
                 <button type="button" className="btn btn-secondary" onClick={() => setIsEditUserModalOpen(false)}>Cancel</button>
                 <button type="submit" disabled={isSubmittingUser} className="btn btn-primary" style={{ fontWeight: 700 }}>
                   {isSubmittingUser ? 'Saving...' : 'Save User Updates'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: DELETE PARTICULAR CANDIDATE PROFILE               */}
+      {/* ======================================================== */}
+      {candidateToDelete && (
+        <div className="modal-backdrop" onClick={() => setCandidateToDelete(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ef4444',
+                flexShrink: 0
+              }}>
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#fff' }}>
+                  Delete Candidate Profile?
+                </h3>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Irreversible DPDP Candidate Erasure
+                </span>
+              </div>
+            </div>
+
+            <div style={{ padding: '14px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-subtle)', marginBottom: '18px' }}>
+              <div style={{ fontWeight: 800, color: '#fff', fontSize: '14px' }}>
+                {candidateToDelete.full_name}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                {candidateToDelete.headline || 'Technical Candidate'}
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' }}>
+                ID: <code>{candidateToDelete.id}</code>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#fca5a5', lineHeight: 1.5, margin: '0 0 20px' }}>
+              Are you sure you want to permanently erase this candidate profile? All associated contact details, parsed resumes, match scores, and outreach records will be destroyed under DPDP compliance.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary btn-sm"
+                onClick={() => setCandidateToDelete(null)}
+                disabled={isDeletingCandidate}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-danger btn-sm"
+                onClick={() => handleDeleteCandidate(candidateToDelete)}
+                disabled={isDeletingCandidate}
+                style={{ fontWeight: 800, background: '#dc2626', borderColor: '#b91c1c' }}
+              >
+                {isDeletingCandidate ? 'Deleting...' : 'Permanently Delete Profile'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: BULK PURGE ALL CANDIDATES                         */}
+      {/* ======================================================== */}
+      {isPurgeAllModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsPurgeAllModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', padding: '24px', border: '1px solid rgba(239, 68, 68, 0.5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ef4444',
+                flexShrink: 0
+              }}>
+                <ShieldAlert size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 900, color: '#f87171', letterSpacing: '-0.01em' }}>
+                  Wipe All Candidate Profiles
+                </h3>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  Platform-Wide Candidate Database Purge
+                </span>
+              </div>
+            </div>
+
+            <div style={{ padding: '14px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', marginBottom: '18px' }}>
+              <div style={{ fontSize: '12.5px', color: '#fca5a5', lineHeight: 1.5, fontWeight: 600 }}>
+                ⚠️ Warning: This will permanently purge all <strong>{adminCandidates.length}</strong> candidate profiles, resumes, matches, contact points, and pipeline history across the entire database.
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                ✓ Recruiter user accounts, active job requirements, and CMS landing page configurations will <strong>remain untouched</strong>.
+              </div>
+            </div>
+
+            <form onSubmit={handlePurgeAllCandidates}>
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  To confirm, type <strong style={{ color: '#fff' }}>DELETE ALL</strong> below:
+                </label>
+                <input 
+                  type="text"
+                  className="text-input"
+                  placeholder="Type DELETE ALL to confirm"
+                  value={purgeConfirmText}
+                  onChange={(e) => setPurgeConfirmText(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    fontWeight: 700, 
+                    borderColor: purgeConfirmText === 'DELETE ALL' ? '#10b981' : 'rgba(239, 68, 68, 0.4)',
+                    color: purgeConfirmText === 'DELETE ALL' ? '#34d399' : '#fff'
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setIsPurgeAllModalOpen(false)}
+                  disabled={isPurgingAll}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-danger btn-sm"
+                  disabled={isPurgingAll || purgeConfirmText.trim().toUpperCase() !== 'DELETE ALL'}
+                  style={{ 
+                    fontWeight: 800, 
+                    background: purgeConfirmText === 'DELETE ALL' ? '#dc2626' : 'rgba(239, 68, 68, 0.3)',
+                    borderColor: purgeConfirmText === 'DELETE ALL' ? '#b91c1c' : 'rgba(239, 68, 68, 0.4)',
+                    cursor: purgeConfirmText === 'DELETE ALL' ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {isPurgingAll ? 'Wiping Database...' : 'Confirm & Wipe Entire Database'}
                 </button>
               </div>
             </form>

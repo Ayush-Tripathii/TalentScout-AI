@@ -15,8 +15,10 @@ from fastapi import FastAPI, File, Header, HTTPException, Query, Response, Uploa
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
+from sqlalchemy import func
 from config.settings import get_settings
 from app.db import init_db, engine
+from app.services.compliance_service import ComplianceService
 from app.models.job import Job, PlatformConfig
 from app.models.candidate import Candidate, CandidateSource, ContactPoint
 from app.models.resume import Resume
@@ -2179,6 +2181,95 @@ async def delete_user_endpoint(
             return {"status": "success", "message": "User account permanently deleted"}
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/admin/candidates", tags=["Admin Portal"])
+async def get_admin_candidates(
+    query: Optional[str] = Query(None),
+    limit: int = Query(100),
+    offset: int = Query(0),
+    authorization: Optional[str] = Header(None),
+):
+    """Retrieve candidate records with contact and source details for CMS administration."""
+    _ = get_current_admin(authorization)
+    with Session(engine, expire_on_commit=False) as session:
+        stmt = select(Candidate)
+        if query and query.strip():
+            q = f"%{query.strip().lower()}%"
+            stmt = stmt.where(
+                (func.lower(Candidate.full_name).like(q)) |
+                (func.lower(Candidate.headline).like(q)) |
+                (func.lower(Candidate.current_location).like(q)) |
+                (func.lower(Candidate.skills_json).like(q))
+            )
+        
+        total = len(session.exec(stmt).all())
+        candidates = session.exec(stmt.order_by(Candidate.created_at.desc()).offset(offset).limit(limit)).all()
+        
+        records = []
+        for c in candidates:
+            contacts = session.exec(select(ContactPoint).where(ContactPoint.candidate_id == c.id)).all()
+            sources = session.exec(select(CandidateSource).where(CandidateSource.candidate_id == c.id)).all()
+            records.append({
+                "id": c.id,
+                "full_name": c.full_name,
+                "headline": c.headline or "Not specified",
+                "current_location": c.current_location or "Not specified",
+                "experience_years": c.experience_years,
+                "skills": json.loads(c.skills_json) if c.skills_json else [],
+                "contacts": [
+                    {"type": cp.kind or "contact", "value": cp.value, "provenance": cp.type}
+                    for cp in contacts
+                ],
+                "sources": [
+                    {"platform": cs.platform, "url": cs.url}
+                    for cs in sources
+                ],
+                "data_completeness": c.data_completeness,
+                "do_not_contact": c.do_not_contact,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            })
+            
+        return {
+            "status": "success",
+            "total_count": total,
+            "count": len(records),
+            "candidates": records,
+        }
+
+
+@app.delete("/api/admin/candidates/purge-all", tags=["Admin Portal"])
+@app.post("/api/admin/candidates/purge-all", tags=["Admin Portal"])
+async def purge_all_admin_candidates(
+    authorization: Optional[str] = Header(None),
+):
+    """Permanently wipe ALL candidate profiles and linked candidate data across the database."""
+    admin = get_current_admin(authorization)
+    svc = ComplianceService()
+    res = svc.purge_all_candidates(
+        reason="Administrator master candidate database wipe from CMS Portal",
+        performed_by=admin.get("email", "admin@talentscout.ai"),
+    )
+    return res
+
+
+@app.delete("/api/admin/candidates/{candidate_id}", tags=["Admin Portal"])
+async def delete_admin_candidate(
+    candidate_id: str,
+    authorization: Optional[str] = Header(None),
+):
+    """Permanently delete a specific candidate profile and all associated data."""
+    admin = get_current_admin(authorization)
+    svc = ComplianceService()
+    try:
+        res = svc.erase_candidate(
+            candidate_id=candidate_id,
+            reason="Administrator manual deletion via CMS Portal",
+            performed_by=admin.get("email", "admin@talentscout.ai"),
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 import os

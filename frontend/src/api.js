@@ -335,6 +335,17 @@ export const api = {
     method: 'DELETE',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   }),
+  getAdminCandidates: (query = '', token) => request(`/admin/candidates?query=${encodeURIComponent(query)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }),
+  deleteAdminCandidate: (candidateId, token) => request(`/admin/candidates/${candidateId}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }),
+  purgeAllAdminCandidates: (token) => request('/admin/candidates/purge-all', {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }),
 
   // Advanced Security, Threat Defense & Email OTP Verification
   getCsrfToken: () => request('/auth/csrf-token'),
