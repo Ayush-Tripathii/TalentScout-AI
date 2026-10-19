@@ -70,6 +70,17 @@ export default function PipelineView({
     { id: 'Rejected', label: 'Rejected' },
   ];
 
+  const getCandidateScore = (item) => {
+    if (!item) return 0;
+    const cand = item.candidate || item;
+    const rank = item.ranking || cand.ranking;
+    const val = cand.score ?? cand.total_score ?? cand.overall_score ?? cand.match_score ??
+                rank?.total_score ?? rank?.overall_score ?? rank?.score ??
+                item.score ?? item.total_score ?? item.overall_score ?? item.match_score ?? 0;
+    const num = typeof val === 'number' ? val : parseFloat(val);
+    return isNaN(num) ? 0 : Math.round(num);
+  };
+
   const allCandidates = Array.isArray(pipelineData) 
     ? pipelineData 
     : (pipelineData?.candidates || pipelineData?.data || []);
@@ -78,19 +89,18 @@ export default function PipelineView({
   const filteredCandidates = allCandidates.filter((item) => {
     if (!item) return false;
     const candidate = item.candidate || item;
-    const ranking = item.ranking;
-    const score = ranking?.overall_score ?? candidate.overall_score ?? candidate.score ?? 0;
+    const score = getCandidateScore(item);
     const email = candidate.email || (candidate.emails && candidate.emails.length > 0 ? candidate.emails[0] : null);
     const phone = candidate.phone || (candidate.phones && candidate.phones.length > 0 ? candidate.phones[0] : null);
-    const stage = candidate.status || candidate.stage || 'New';
+    const stage = candidate.status || candidate.stage || item.stage || 'New';
 
     // Stage filter
     if (activeStage !== 'ALL') {
       if (stage.toLowerCase() !== activeStage.toLowerCase()) return false;
     }
 
-    // Min Score
-    if (score < minScore) return false;
+    // Min Score: STRICTLY enforce >= minScore threshold
+    if (score < Number(minScore)) return false;
 
     // Verified contact
     if (onlyVerified && !email && !phone) return false;
@@ -98,9 +108,11 @@ export default function PipelineView({
     // Text search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const name = (candidate.full_name || '').toLowerCase();
-      const title = (candidate.current_title || candidate.headline || '').toLowerCase();
-      const skills = Array.isArray(candidate.skills) ? candidate.skills.join(' ').toLowerCase() : (candidate.skills || '').toLowerCase();
+      const name = (candidate.full_name || item.full_name || '').toLowerCase();
+      const title = (candidate.current_title || candidate.headline || item.headline || '').toLowerCase();
+      const skills = Array.isArray(candidate.skills || item.skills)
+        ? (candidate.skills || item.skills).join(' ').toLowerCase()
+        : (candidate.skills || item.skills || '').toLowerCase();
       if (!name.includes(q) && !title.includes(q) && !skills.includes(q)) {
         return false;
       }
@@ -157,10 +169,10 @@ export default function PipelineView({
           {stages.map((st) => {
             const isActive = activeStage === st.id;
             const count = st.id === 'ALL' 
-              ? allCandidates.length 
+              ? allCandidates.filter(c => getCandidateScore(c) >= Number(minScore)).length 
               : allCandidates.filter(c => {
                   const stage = (c?.candidate?.status || c?.candidate?.stage || c?.status || c?.stage || 'New').toLowerCase();
-                  return stage === st.id.toLowerCase();
+                  return stage === st.id.toLowerCase() && getCandidateScore(c) >= Number(minScore);
                 }).length;
 
 

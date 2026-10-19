@@ -12,7 +12,9 @@ import {
 export default function CandidateCard({ candidate, ranking, onClick, onStageChange }) {
   if (!candidate) return null;
 
-  const score = ranking?.overall_score ?? candidate.overall_score ?? candidate.score ?? 0;
+  const scoreVal = candidate.score ?? candidate.total_score ?? candidate.overall_score ?? candidate.match_score ??
+                   ranking?.total_score ?? ranking?.overall_score ?? ranking?.score ?? 0;
+  const score = Math.round(typeof scoreVal === 'number' ? scoreVal : (parseFloat(scoreVal) || 0));
   const scoreClass = score >= 75 ? 'score-high' : score >= 50 ? 'score-mid' : 'score-low';
 
   // Platform styling
@@ -20,7 +22,11 @@ export default function CandidateCard({ candidate, ranking, onClick, onStageChan
   let platformBadge = 'badge-accent';
   if (platform.includes('linkedin')) platformBadge = 'badge-platform-linkedin';
   else if (platform.includes('github')) platformBadge = 'badge-platform-github';
-  else if (platform.includes('resume')) platformBadge = 'badge-platform-resume';
+  else if (platform.includes('resume') || platform.includes('public_resume')) platformBadge = 'badge-platform-resume';
+  else if (platform.includes('naukri')) platformBadge = 'badge-platform-naukri';
+  else if (platform.includes('foundit')) platformBadge = 'badge-platform-foundit';
+  else if (platform.includes('shine')) platformBadge = 'badge-platform-shine';
+  else if (platform.includes('apna')) platformBadge = 'badge-platform-apna';
 
   // Extract initials
   const name = candidate.full_name || 'Candidate';

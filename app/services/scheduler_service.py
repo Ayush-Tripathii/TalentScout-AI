@@ -237,7 +237,8 @@ class SchedulerService:
             # 3. Check for high-fit candidates exceeding threshold
             for r in newly_ingested:
                 cid = r.get("candidate_id")
-                score = float(r.get("match_score", 0.0))
+                score_val = r.get("match_score") or r.get("score") or r.get("total_score") or r.get("overall_score") or 0.0
+                score = float(score_val)
                 
                 if score >= schedule.min_score_threshold:
                     cand = session.get(Candidate, cid)

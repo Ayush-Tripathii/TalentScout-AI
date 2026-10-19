@@ -739,10 +739,13 @@ async def execute_search_query(request: ExecuteQueryRequest):
 
 
 @app.get("/api/sourcing/candidates/{job_id}", tags=["Sourcing"])
-async def get_sourcing_candidates(job_id: str):
-    """Fetch all saved candidates associated with a job."""
+async def get_sourcing_candidates(
+    job_id: str,
+    min_score: Optional[float] = Query(None, description="Optional minimum fit score filter"),
+):
+    """Fetch all saved candidates associated with a job with optional min_score filter."""
     sourcing_service = SourcingService()
-    cands = sourcing_service.get_candidates_for_job(job_id)
+    cands = sourcing_service.get_candidates_for_job(job_id, min_score=min_score)
     return {"status": "success", "count": len(cands), "data": cands}
 
 
@@ -856,10 +859,10 @@ async def get_job_pipeline(job_id: str, min_score: Optional[float] = Query(None,
                 session.commit()
                 session.refresh(m)
 
-            score = m.total_score if m else 0.0
+            score = float(m.total_score) if m else 0.0
 
             # Optional server-side minimum score filter
-            if min_score is not None and score < min_score:
+            if min_score is not None and score < float(min_score):
                 continue
 
             breakdown = json.loads(m.breakdown_json) if (m and m.breakdown_json) else {}
@@ -896,6 +899,9 @@ async def get_job_pipeline(job_id: str, min_score: Optional[float] = Query(None,
                 "skills": json.loads(cand.skills_json) if cand.skills_json else [],
                 "data_completeness": cand.data_completeness,
                 "score": score,
+                "match_score": score,
+                "total_score": score,
+                "overall_score": score,
                 "breakdown": breakdown,
                 "why_bullets": why_bullets,
                 "missing_skills": missing_skills,

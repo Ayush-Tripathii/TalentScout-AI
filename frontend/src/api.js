@@ -124,11 +124,17 @@ export const api = {
       limit: Number(limit),
     }),
   }),
-  getCandidates: (jobId) => request(`/sourcing/candidates/${jobId}`),
+  getCandidates: (jobId, minScore = null) => {
+    const qs = (minScore !== null && minScore !== undefined) ? `?min_score=${encodeURIComponent(minScore)}` : '';
+    return request(`/sourcing/candidates/${jobId}${qs}`);
+  },
 
 
   // Pipeline & Ranking
-  getPipeline: (jobId) => request(`/pipeline/${jobId}`),
+  getPipeline: (jobId, minScore = null) => {
+    const qs = (minScore !== null && minScore !== undefined) ? `?min_score=${encodeURIComponent(minScore)}` : '';
+    return request(`/pipeline/${jobId}${qs}`);
+  },
   evaluateAllRanking: (jobId) => request(`/ranking/evaluate-all/${jobId}`, {
     method: 'POST',
   }),

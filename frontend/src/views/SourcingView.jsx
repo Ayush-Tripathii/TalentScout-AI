@@ -36,6 +36,7 @@ export default function SourcingView({
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [searchStatus, setSearchStatus] = useState('');
   const [filterOnlyVerified, setFilterOnlyVerified] = useState(false);
+  const [minScore, setMinScore] = useState(0);
   const [engineStatus, setEngineStatus] = useState(null);
 
   // Auto-generate fallback query templates if backend is loading or queries empty
@@ -52,7 +53,7 @@ export default function SourcingView({
     },
     {
       platform: 'foundit',
-      query: `site:foundit.in/resume "${currentJob.title || 'Developer'}" ("${currentJob.location || 'India'}")`,
+      query: `site:foundit.in "${currentJob.title || 'Developer'}" ("${currentJob.location || 'India'}")`,
       description: 'Foundit India public resumes'
     },
     {
@@ -72,7 +73,7 @@ export default function SourcingView({
     },
     {
       platform: 'public_resume',
-      query: `(filetype:pdf OR filetype:docx) (resume OR CV) "${currentJob.title || 'Developer'}" ("${currentJob.location || 'India'}") -template -sample -job`,
+      query: `filetype:pdf resume "${currentJob.title || 'Developer'}" ("${currentJob.location || 'India'}") -template -sample`,
       description: 'Public resume indexing'
     }
   ] : [];
@@ -222,10 +223,22 @@ export default function SourcingView({
     }
   };
 
+  const getCandidateScore = (c) => {
+    if (!c) return 0;
+    const rank = c.ranking;
+    const val = c.score ?? c.total_score ?? c.overall_score ?? c.match_score ??
+                rank?.total_score ?? rank?.overall_score ?? rank?.score ?? 0;
+    const num = typeof val === 'number' ? val : parseFloat(val);
+    return isNaN(num) ? 0 : Math.round(num);
+  };
+
   // Filtering candidates
   const safeCandidates = Array.isArray(candidates) ? candidates : [];
   const filteredCandidates = safeCandidates.filter(c => {
     if (!c) return false;
+    const score = getCandidateScore(c);
+    if (score < Number(minScore)) return false;
+
     const email = c.email || (c.emails && c.emails.length > 0 ? c.emails[0] : null);
     const phone = c.phone || (c.phones && c.phones.length > 0 ? c.phones[0] : null);
     if (filterOnlyVerified && !email && !phone) return false;
@@ -525,7 +538,56 @@ export default function SourcingView({
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            {/* Precision Match Score Threshold Filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700, textTransform: 'uppercase' }}>
+                Fit Threshold:
+              </span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button 
+                  type="button"
+                  className={`btn btn-sm ${Number(minScore) === 50 ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '11px', padding: '3px 9px' }}
+                  onClick={() => setMinScore(50)}
+                >
+                  Qualified (50%+)
+                </button>
+                <button 
+                  type="button"
+                  className={`btn btn-sm ${Number(minScore) === 75 ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '11px', padding: '3px 9px' }}
+                  onClick={() => setMinScore(75)}
+                >
+                  Strong (75%+)
+                </button>
+                <button 
+                  type="button"
+                  className={`btn btn-sm ${Number(minScore) === 0 ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '11px', padding: '3px 9px' }}
+                  onClick={() => setMinScore(0)}
+                >
+                  All (0%+)
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '4px' }}>
+                <input
+                  type="range"
+                  min="0"
+                  max="90"
+                  step="5"
+                  value={minScore}
+                  onChange={(e) => setMinScore(Number(e.target.value))}
+                  style={{ accentColor: 'var(--accent-primary)', width: '75px', cursor: 'pointer' }}
+                  title="Adjust minimum match score percentage"
+                />
+                <span className="badge badge-accent" style={{ minWidth: '36px', justifyContent: 'center', fontSize: '11px' }}>
+                  ≥{minScore}%
+                </span>
+              </div>
+            </div>
+
             <span className="badge badge-verified">
               <CheckCircle size={11} />
               Zero Simulated Contacts
@@ -553,14 +615,17 @@ export default function SourcingView({
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-            {filteredCandidates.map((candidate) => (
-              <CandidateCard
-                key={candidate.id}
-                candidate={candidate}
-                onClick={() => onSelectCandidate(candidate)}
-                onStageChange={onStageChange}
-              />
-            ))}
+            {filteredCandidates.map((candidate) => {
+              const score = getCandidateScore(candidate);
+              return (
+                <CandidateCard
+                  key={candidate.id}
+                  candidate={{ ...candidate, score }}
+                  onClick={() => onSelectCandidate({ ...candidate, score })}
+                  onStageChange={onStageChange}
+                />
+              );
+            })}
           </div>
         )}
       </div>

@@ -239,6 +239,9 @@ class SourcingService:
                 parsed["full_name"] = parsed.get("name")
                 parsed["profile_url"] = parsed.get("url")
                 parsed["score"] = eval_res["total_score"]
+                parsed["match_score"] = eval_res["total_score"]
+                parsed["total_score"] = eval_res["total_score"]
+                parsed["overall_score"] = eval_res["total_score"]
                 parsed["breakdown"] = eval_res["breakdown"]
                 parsed["why_bullets"] = eval_res["why_bullets"]
                 parsed["missing_skills"] = eval_res["missing_skills"]
@@ -268,7 +271,7 @@ class SourcingService:
 
         return parsed_candidates
 
-    def get_candidates_for_job(self, job_id: str) -> List[Dict[str, Any]]:
+    def get_candidates_for_job(self, job_id: str, min_score: Optional[float] = None) -> List[Dict[str, Any]]:
         """Retrieve all candidates associated with a job via PipelineStatus."""
         ranking_engine = RankingEngine()
         with Session(engine, expire_on_commit=False) as session:
@@ -311,6 +314,9 @@ class SourcingService:
                     session.refresh(match)
 
                 score = match.total_score if match else 0.0
+                if min_score is not None and score < float(min_score):
+                    continue
+
                 breakdown = json.loads(match.breakdown_json) if (match and match.breakdown_json) else {}
                 why_bullets = json.loads(match.why_bullets_json) if (match and match.why_bullets_json) else []
                 missing_skills = json.loads(match.missing_skills_json) if (match and match.missing_skills_json) else []
@@ -322,6 +328,9 @@ class SourcingService:
                     "current_location": candidate.current_location,
                     "skills": json.loads(candidate.skills_json) if candidate.skills_json else [],
                     "score": score,
+                    "match_score": score,
+                    "total_score": score,
+                    "overall_score": score,
                     "breakdown": breakdown,
                     "why_bullets": why_bullets,
                     "missing_skills": missing_skills,

@@ -128,7 +128,7 @@ class QueryBuilder:
         # Platform: Naukri
         queries.append({
             "platform": "naukri",
-            "query": f"site:naukri.com {titles_clause} {skills_clause} {locs_clause}",
+            "query": f'site:naukri.com "{title}" {skills_clause} {locs_clause}',
             "description": "Naukri X-Ray public talent search",
             "contact_visible": False,
         })
@@ -136,7 +136,7 @@ class QueryBuilder:
         # Platform: Foundit (Monster)
         queries.append({
             "platform": "foundit",
-            "query": f"site:foundit.in {titles_clause} {skills_clause} {locs_clause}",
+            "query": f'site:foundit.in "{title}" {skills_clause} {locs_clause}',
             "description": "Foundit India public resumes",
             "contact_visible": False,
         })
@@ -144,7 +144,7 @@ class QueryBuilder:
         # Platform: Shine
         queries.append({
             "platform": "shine",
-            "query": f"site:shine.com {titles_clause} {skills_clause} {locs_clause}",
+            "query": f'site:shine.com "{title}" {skills_clause} {locs_clause}',
             "description": "Shine India candidate search",
             "contact_visible": False,
         })
@@ -152,7 +152,7 @@ class QueryBuilder:
         # Platform: Apna
         queries.append({
             "platform": "apna",
-            "query": f"site:apna.co {titles_clause} {skills_clause} {locs_clause}",
+            "query": f'site:apna.co "{title}" {skills_clause} {locs_clause}',
             "description": "Apna job seeker profiles",
             "contact_visible": False,
         })
@@ -167,11 +167,10 @@ class QueryBuilder:
             "contact_visible": False,
         })
 
-        # Platform: Public Resumes (PDF / DOCX)
-        primary_skill = top_skills[0] if top_skills else "Java"
+        # Platform: Public Resumes (PDF / DOCX / GitHub Pages)
         queries.append({
             "platform": "public_resume",
-            "query": f'(filetype:pdf OR filetype:docx) (resume OR CV) "{primary_skill}" {locs_clause} -template -sample -job',
+            "query": f'filetype:pdf resume "{title}" {locs_clause} -template -sample',
             "description": "Publicly posted PDF/DOCX resumes (no login required)",
             "contact_visible": False,
         })
