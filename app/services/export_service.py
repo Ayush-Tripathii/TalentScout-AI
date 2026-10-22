@@ -74,17 +74,23 @@ class ExportService:
         rows.sort(key=lambda r: r["Match Score"], reverse=True)
         return rows
 
+    DEFAULT_HEADERS = [
+        "Full Name", "Match Score", "Pipeline Stage", "Headline / Title",
+        "Location", "Experience (Yrs)", "Skills", "Data Completeness",
+        "Verified Emails", "Verified Phones", "Profile URLs", "Why Matched",
+        "Missing Skills", "Target Job"
+    ]
+
     @classmethod
     def export_to_csv(cls, job_id: str, session: Session, stage_filter: Optional[str] = None) -> bytes:
         """Export candidates to UTF-8 encoded CSV bytes."""
         rows = cls.get_export_rows(job_id, session, stage_filter=stage_filter)
-        if not rows:
-            return b""
         output = io.StringIO()
-        fieldnames = list(rows[0].keys())
+        fieldnames = list(rows[0].keys()) if rows else cls.DEFAULT_HEADERS
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        if rows:
+            writer.writerows(rows)
         return output.getvalue().encode("utf-8")
 
     @classmethod
@@ -96,15 +102,15 @@ class ExportService:
             wb = Workbook()
             ws = wb.active
             ws.title = "Candidate Pipeline"
+            headers = list(rows[0].keys()) if rows else cls.DEFAULT_HEADERS
+            ws.append(headers)
             if rows:
-                headers = list(rows[0].keys())
-                ws.append(headers)
                 for r in rows:
                     ws.append([r.get(h, "") for h in headers])
-                for col in ws.columns:
-                    max_len = max(len(str(cell.value or "")) for cell in col)
-                    col_letter = col[0].column_letter
-                    ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 45)
+            for col in ws.columns:
+                max_len = max(len(str(cell.value or "")) for cell in col)
+                col_letter = col[0].column_letter
+                ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 45)
             output = io.BytesIO()
             wb.save(output)
             return output.getvalue()

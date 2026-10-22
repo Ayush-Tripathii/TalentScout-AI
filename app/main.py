@@ -1053,6 +1053,7 @@ async def create_candidate(request: CandidateCreateRequest):
 # Export Endpoints
 # -------------------------------------------------------------
 @app.get("/api/export/{job_id}/excel", tags=["Export"])
+@app.get("/export/{job_id}/excel", tags=["Export"])
 async def export_pipeline_excel(job_id: str, stage: Optional[str] = None):
     """Download candidate pipeline roster as formatted Excel (.xlsx) file."""
     with Session(engine, expire_on_commit=False) as session:
@@ -1066,6 +1067,7 @@ async def export_pipeline_excel(job_id: str, stage: Optional[str] = None):
 
 
 @app.get("/api/export/{job_id}/csv", tags=["Export"])
+@app.get("/export/{job_id}/csv", tags=["Export"])
 async def export_pipeline_csv(job_id: str, stage: Optional[str] = None):
     """Download candidate pipeline roster as CSV file."""
     with Session(engine, expire_on_commit=False) as session:
