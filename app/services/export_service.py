@@ -1,9 +1,7 @@
-"""Export Service for Candidate Pipeline (Excel and CSV)."""
-
 import io
+import csv
 import json
 from typing import Any, Dict, List, Optional
-import pandas as pd
 from sqlmodel import Session, select
 
 from app.models.job import Job
@@ -80,24 +78,40 @@ class ExportService:
     def export_to_csv(cls, job_id: str, session: Session, stage_filter: Optional[str] = None) -> bytes:
         """Export candidates to UTF-8 encoded CSV bytes."""
         rows = cls.get_export_rows(job_id, session, stage_filter=stage_filter)
-        df = pd.DataFrame(rows)
-        return df.to_csv(index=False).encode("utf-8")
+        if not rows:
+            return b""
+        output = io.StringIO()
+        fieldnames = list(rows[0].keys())
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+        return output.getvalue().encode("utf-8")
 
     @classmethod
     def export_to_excel(cls, job_id: str, session: Session, stage_filter: Optional[str] = None) -> bytes:
         """Export candidates to styled Excel (.xlsx) bytes."""
         rows = cls.get_export_rows(job_id, session, stage_filter=stage_filter)
-        df = pd.DataFrame(rows)
-
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df.to_excel(writer, sheet_name="Candidate Pipeline", index=False)
-
-            # Auto-adjust column widths
-            worksheet = writer.sheets["Candidate Pipeline"]
-            for col in worksheet.columns:
-                max_len = max(len(str(cell.value or "")) for cell in col)
-                col_letter = col[0].column_letter
-                worksheet.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 45)
-
-        return output.getvalue()
+        try:
+            from openpyxl import Workbook
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Candidate Pipeline"
+            if rows:
+                headers = list(rows[0].keys())
+                ws.append(headers)
+                for r in rows:
+                    ws.append([r.get(h, "") for h in headers])
+                for col in ws.columns:
+                    max_len = max(len(str(cell.value or "")) for cell in col)
+                    col_letter = col[0].column_letter
+                    ws.column_dimensions[col_letter].width = min(max(max_len + 3, 12), 45)
+            output = io.BytesIO()
+            wb.save(output)
+            return output.getvalue()
+        except ImportError:
+            import pandas as pd
+            df = pd.DataFrame(rows)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df.to_excel(writer, sheet_name="Candidate Pipeline", index=False)
+            return output.getvalue()

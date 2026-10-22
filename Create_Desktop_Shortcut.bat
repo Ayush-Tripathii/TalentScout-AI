@@ -9,11 +9,12 @@ echo.
 cd /d "%~dp0"
 set "APP_DIR=%~dp0"
 set "APP_DIR=%APP_DIR:~0,-1%"
-set "PYTHONW_PATH=%APP_DIR%\.venv\Scripts\pythonw.exe"
+set "PYTHONW_PATH=%APP_DIR%\runtime\pythonw.exe"
+if not exist "%PYTHONW_PATH%" set "PYTHONW_PATH=%APP_DIR%\.venv\Scripts\pythonw.exe"
 set "SCRIPT_PATH=%APP_DIR%\desktop_app.py"
 set "ICON_PATH=%APP_DIR%\talentscout.ico"
 
-echo [1/2] Creating Native Desktop Shortcut (No VBS Dependency)...
+echo [1/2] Creating Native Desktop Shortcut (100%% Portable Launcher)...
 
 powershell -NoProfile -Command ^
     "$wsh = New-Object -ComObject WScript.Shell; " ^

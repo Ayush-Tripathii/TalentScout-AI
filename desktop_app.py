@@ -37,6 +37,11 @@ def is_backend_healthy() -> bool:
 def start_backend():
     """Start uvicorn server in a silent background process."""
     python_exe = sys.executable
+    py_path = Path(python_exe)
+    # Prefer python.exe in the same folder if launched via pythonw.exe
+    if py_path.name.lower() == "pythonw.exe" and (py_path.parent / "python.exe").exists():
+        python_exe = str(py_path.parent / "python.exe")
+
     # On Windows, use CREATE_NO_WINDOW so no black cmd prompt ever shows
     creation_flags = 0x08000000 if os.name == "nt" else 0
 

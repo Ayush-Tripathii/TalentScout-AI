@@ -4,12 +4,15 @@
 Set fso = CreateObject("Scripting.FileSystemObject")
 ScriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 
-PythonExe = ScriptDir & "\.venv\Scripts\pythonw.exe"
+PythonExe = ScriptDir & "\runtime\pythonw.exe"
+If Not fso.FileExists(PythonExe) Then
+    PythonExe = ScriptDir & "\.venv\Scripts\pythonw.exe"
+End If
 ScriptFile = ScriptDir & "\desktop_app.py"
 
 If Not fso.FileExists(PythonExe) Then
-    MsgBox "Python virtual environment not found in .venv\Scripts\pythonw.exe!" & vbCrLf & _
-           "Please ensure the folder was transferred with .venv intact.", vbCritical, "TalentScout Error"
+    MsgBox "Python runtime not found in runtime\pythonw.exe!" & vbCrLf & _
+           "Please ensure the application folder is intact.", vbCritical, "TalentScout Error"
     WScript.Quit 1
 End If
 
