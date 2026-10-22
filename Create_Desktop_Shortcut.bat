@@ -33,3 +33,4 @@ echo.
 echo [2/2] Done! You can now launch TalentScout AI directly from your Desktop.
 echo ===============================================================================
 echo.
+pause
